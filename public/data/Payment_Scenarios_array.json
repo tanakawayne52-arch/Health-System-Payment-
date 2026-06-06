@@ -1,0 +1,61 @@
+[
+  [
+    "Payment Scenarios"
+  ],
+  [],
+  [
+    "Case A. Inactive both quarters"
+  ],
+  [],
+  [
+    "If payment = $0 → \"Correct: inactive, no payment\""
+  ],
+  [],
+  [
+    "If payment > $0 → \"Incorrect: inactive but paid\""
+  ],
+  [],
+  [
+    "Case B. Active one quarter only"
+  ],
+  [],
+  [
+    "If payment = $60 → \"Correct: 1 quarter paid\""
+  ],
+  [],
+  [
+    "If payment < $60 → \"Underpaid for 1 quarter\""
+  ],
+  [],
+  [
+    "If payment > $60 → \"Overpaid for 1 quarter\""
+  ],
+  [],
+  [
+    "Case C. Active both quarters"
+  ],
+  [],
+  [
+    "If payment = $0 → \"No payment\""
+  ],
+  [],
+  [
+    "If 1–59 → \"Partial payment for 1 quarter\""
+  ],
+  [],
+  [
+    "If =60 → \"Full payment for 1 quarter only\""
+  ],
+  [],
+  [
+    "If 61–119 → \"Underpaid for 2 quarters\""
+  ],
+  [],
+  [
+    "If =120 → \"Correct: fully paid for 2 quarters\""
+  ],
+  [],
+  [
+    "If >120 → \"Overpayment\""
+  ]
+]
