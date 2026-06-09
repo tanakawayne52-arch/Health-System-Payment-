@@ -110,6 +110,7 @@ export function useBeneficiaries() {
     return unsubscribe;
   }, [subscribe, fetchData]);
 
+  // Only one fetchData call on mount/change of deps
   useEffect(() => {
     fetchData();
   }, [fetchData]);

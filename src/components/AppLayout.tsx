@@ -29,6 +29,22 @@ const pageTitles: Record<string, string> = {
   '/vhw-provincial-dashboard': 'VHW Provincial Dashboard',
 };
 
+// Create a map of paths to lazy component loaders for preloading
+const preloadMap: Record<string, () => void> = {
+  '/': () => import('@/pages/ProvincialDashboard'),
+  '/beneficiaries': () => import('@/pages/BeneficiariesPage'),
+  '/payment-lists': () => import('@/pages/PaymentListsPage'),
+  '/payment-lists/new': () => import('@/pages/PaymentListCreatePage'),
+  '/payment-batches': () => import('@/pages/PaymentBatchesPage'),
+  '/payment-cycles': () => import('@/pages/PaymentCyclesPage'),
+  '/reconciliation': () => import('@/pages/ReconciliationPage'),
+  '/audit-trail': () => import('@/pages/AuditTrailPage'),
+  '/reports': () => import('@/pages/ReportsPage'),
+  '/users': () => import('@/pages/UsersPage'),
+  '/vhw-national-dashboard': () => import('@/pages/VhwNationalDashboard'),
+  '/vhw-provincial-dashboard': () => import('@/pages/VhwProvincialDashboard'),
+};
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, isNationalLevel } = useAuth();
   const location = useLocation();
@@ -121,10 +137,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {navItems.map(item => {
             const Icon = iconMap[item.icon] || LayoutDashboard;
             const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+            const preload = preloadMap[item.path];
             return (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
+                onMouseEnter={() => preload && preload()}
+                onTouchStart={() => preload && preload()}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-150 text-left ${
                   isActive
                     ? 'nav-active text-white'
@@ -157,8 +176,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         className="pt-[60px] min-h-screen transition-all duration-200"
         style={{ marginLeft: collapsed ? 72 : 260 }}
       >
-        {/* Add key based on pathname to force re-render, and fade-in animation! */}
-        <div key={location.pathname} className="p-6 animate-fade-in">
+        <div className="p-6 animate-fade-in">
           {children}
         </div>
       </main>

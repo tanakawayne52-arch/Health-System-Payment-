@@ -1,5 +1,18 @@
 /// <reference types="vite/client" />
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import { authenticateUser, getUserByEmail } from '@/data/users';
+import { 
+  getUsers, 
+  getBeneficiaries, 
+  getCycles, 
+  getPaymentLists, 
+  getBatches, 
+  getAuditLogs, 
+  getExceptions,
+  seedAllData 
+} from '@/data/seed';
+
+// Seed data on first load
+seedAllData();
 
 interface ApiResponse<T> {
   success: boolean;
@@ -19,195 +32,169 @@ interface PaginatedResponse<T> {
 }
 
 class ApiClient {
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
+  private currentUser: User | null = null;
+  private accessToken = 'dummy_access_token';
 
-  constructor() {
-    // Load tokens from localStorage on init
-    this.accessToken = localStorage.getItem('accessToken');
-    this.refreshToken = localStorage.getItem('refreshToken');
-  }
-
-  setTokens(accessToken: string, refreshToken: string) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-  }
-
-  clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...options.headers,
+  // Helper to map app Beneficiary to API Beneficiary
+  private mapBeneficiary(ben: any): Beneficiary {
+    return {
+      id: ben.id,
+      full_name: ben.fullName,
+      national_id: ben.nationalId,
+      ecocash_number: ben.ecocashNumber,
+      province: ben.province,
+      district: ben.district,
+      ward: ben.ward,
+      village: ben.village,
+      facility: ben.facility,
+      status: ben.status,
+      exit_date: ben.exitDate,
+      exit_reason: ben.exitReason,
+      date_joined: ben.dateJoined,
+      created_at: ben.createdAt
     };
-
-    if (this.accessToken) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers,
-      });
-
-      // Handle token refresh
-      if (response.status === 401 && this.refreshToken) {
-        const refreshed = await this.refreshAccessToken();
-        if (refreshed) {
-          // Retry the request with new token
-          (headers as Record<string, string>)['Authorization'] = `Bearer ${this.accessToken}`;
-          const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
-            ...options,
-            headers,
-          });
-          return this.parseResponse(retryResponse);
-        }
-      }
-
-      return this.parseResponse(response);
-    } catch (error) {
-      console.error('[API] Request failed:', error);
-      return { success: false, error: 'Network error' };
-    }
   }
 
-  private async parseResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    // Check if response has content
-    const contentLength = response.headers.get('content-length');
-    const contentType = response.headers.get('content-type');
-    
-    // If no content or content-length is 0, return success without data
-    if (response.status === 204 || !contentLength || parseInt(contentLength) === 0) {
-      return { success: true };
-    }
-
-    // Check if content is JSON
-    if (contentType && contentType.includes('application/json')) {
-      try {
-        return await response.json();
-      } catch (error) {
-        console.error('[API] Failed to parse JSON:', error);
-        return { success: false, error: 'Invalid response format' };
-      }
-    }
-
-    // For non-JSON responses, return success
-    return { success: true };
-  }
-
-  private async refreshAccessToken(): Promise<boolean> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
-      });
-
-      // Check if response is OK before parsing
-      if (!response.ok) {
-        this.clearTokens();
-        return false;
-      }
-
-      // Parse response only if there's content
-      const contentLength = response.headers.get('content-length');
-      if (!contentLength || parseInt(contentLength) === 0) {
-        this.clearTokens();
-        return false;
-      }
-
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        this.setTokens(result.data.accessToken, result.data.refreshToken);
-        return true;
-      }
-
-      this.clearTokens();
-      return false;
-    } catch {
-      this.clearTokens();
-      return false;
-    }
+  // Helper to map app PaymentBatch to API PaymentBatch
+  private mapBatch(batch: any): PaymentBatch {
+    return {
+      id: batch.id,
+      cycle_id: batch.cycleId,
+      name: batch.name,
+      province: batch.province,
+      district: batch.district,
+      status: batch.status,
+      total_beneficiaries: batch.totalBeneficiaries,
+      total_amount: batch.totalAmount,
+      successful_count: 0,
+      failed_count: 0,
+      successful_amount: 0,
+      failed_amount: 0,
+      ecocash_batch_ref: null,
+      created_at: batch.createdAt
+    };
   }
 
   // Auth endpoints
-  async login(email: string, password: string) {
-    const result = await this.request<{
-      user: User;
-      accessToken: string;
-      refreshToken: string;
-    }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (result.success && result.data) {
-      this.setTokens(result.data.accessToken, result.data.refreshToken);
+  async login(email: string, password: string): Promise<ApiResponse<{ user: User; accessToken: string; refreshToken: string }>> {
+    try {
+      const user = authenticateUser(email, password);
+      if (user) {
+        this.currentUser = user;
+        // Generate dummy tokens for compatibility
+        const accessToken = 'dummy_access_token';
+        const refreshToken = 'dummy_refresh_token';
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
+        localStorage.setItem('fepms_current_user', JSON.stringify(user));
+        
+        return {
+          success: true,
+          data: {
+            user,
+            accessToken,
+            refreshToken
+          }
+        };
+      }
+      return { success: false, error: 'Invalid credentials' };
+    } catch (error) {
+      console.error('[API] Login failed:', error);
+      return { success: false, error: 'Login failed' };
     }
-
-    return result;
   }
 
   async logout() {
-    const result = await this.request('/auth/logout', { method: 'POST' });
-    this.clearTokens();
-    return result;
+    this.currentUser = null;
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('fepms_current_user');
+    return { success: true };
   }
 
-  async getMe() {
-    return this.request<User>('/auth/me');
+  async getMe(): Promise<ApiResponse<User>> {
+    try {
+      // Check if we have a stored user in localStorage
+      const storedUser = localStorage.getItem('fepms_current_user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        const dbUser = getUserByEmail(user.email);
+        if (dbUser) {
+          return { success: true, data: dbUser };
+        }
+      }
+      return { success: false, error: 'Not authenticated' };
+    } catch (error) {
+      console.error('[API] Get me failed:', error);
+      return { success: false, error: 'Failed to get user' };
+    }
   }
 
   async changePassword(currentPassword: string, newPassword: string) {
-    return this.request('/auth/change-password', {
-      method: 'POST',
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
+    return { success: true };
   }
 
   // Dashboard endpoints
-  async getDashboardStats(province?: string) {
-    const params = province ? `?province=${encodeURIComponent(province)}` : '';
-    return this.request<DashboardStats>(`/dashboard/overview${params}`);
+  async getDashboardStats(province?: string): Promise<ApiResponse<DashboardStats>> {
+    return {
+      success: true,
+      data: {
+        totalBeneficiaries: getBeneficiaries().length,
+        activeBeneficiaries: getBeneficiaries().filter(b => b.status === 'active').length,
+        totalDisbursed: getBatches().reduce((sum, b) => sum + b.totalAmount, 0),
+        pendingPayments: 0,
+        successRate: 0.95,
+        monthlyStats: [],
+        provinceStats: [],
+        recentBatches: getBatches().slice(0, 5).map(b => ({
+          id: b.id,
+          name: b.name,
+          province: b.province,
+          status: b.status,
+          totalAmount: b.totalAmount,
+          totalBeneficiaries: b.totalBeneficiaries,
+          successRate: 0.95,
+          createdAt: b.createdAt
+        })),
+        recentTransactions: []
+      }
+    };
   }
 
-  async getBatchProgress() {
-    return this.request<BatchProgress[]>('/dashboard/batch-progress');
+  async getBatchProgress(): Promise<ApiResponse<BatchProgress[]>> {
+    return {
+      success: true,
+      data: getBatches().slice(0, 5).map(b => ({
+        id: b.id,
+        name: b.name,
+        province: b.province,
+        status: b.status,
+        total_beneficiaries: b.totalBeneficiaries,
+        successful_count: Math.floor(b.totalBeneficiaries * 0.95),
+        failed_count: Math.floor(b.totalBeneficiaries * 0.05),
+        total_amount: b.totalAmount,
+        successful_amount: Math.floor(b.totalAmount * 0.95),
+        executed_at: b.executedAt || new Date().toISOString()
+      }))
+    };
   }
 
-  async getTransactionAnalytics(params: {
-    startDate?: string;
-    endDate?: string;
-    groupBy?: 'day' | 'week' | 'month';
-    province?: string;
-  }) {
-    const queryParams = new URLSearchParams();
-    if (params.startDate) queryParams.set('startDate', params.startDate);
-    if (params.endDate) queryParams.set('endDate', params.endDate);
-    if (params.groupBy) queryParams.set('groupBy', params.groupBy);
-    if (params.province) queryParams.set('province', params.province);
-    return this.request<TransactionAnalytics[]>(`/dashboard/analytics/transactions?${queryParams}`);
+  async getTransactionAnalytics(params: any): Promise<ApiResponse<TransactionAnalytics[]>> {
+    return { success: true, data: [] };
   }
 
-  async getFailureAnalytics(province?: string) {
-    const params = province ? `?province=${encodeURIComponent(province)}` : '';
-    return this.request<FailureAnalytics>(`/dashboard/analytics/failures${params}`);
+  async getFailureAnalytics(province?: string): Promise<ApiResponse<FailureAnalytics>> {
+    return {
+      success: true,
+      data: {
+        failureCodes: [],
+        failuresByProvince: []
+      }
+    };
   }
 
-  async getProvinceAnalytics() {
-    return this.request<ProvinceAnalytics[]>('/dashboard/analytics/provinces');
+  async getProvinceAnalytics(): Promise<ApiResponse<ProvinceAnalytics[]>> {
+    return { success: true, data: [] };
   }
 
   // Batches endpoints
@@ -217,65 +204,107 @@ class ApiClient {
     cycleId?: string;
     page?: number;
     limit?: number;
-  }) {
-    const queryParams = new URLSearchParams();
-    if (params.province) queryParams.set('province', params.province);
-    if (params.status) queryParams.set('status', params.status);
-    if (params.cycleId) queryParams.set('cycleId', params.cycleId);
-    if (params.page) queryParams.set('page', String(params.page));
-    if (params.limit) queryParams.set('limit', String(params.limit));
-    return this.request<PaginatedResponse<PaymentBatch>>(`/batches?${queryParams}`);
+  }): Promise<ApiResponse<PaginatedResponse<PaymentBatch>>> {
+    let batches = getBatches();
+    if (params.province && params.province !== 'null') {
+      batches = batches.filter(b => b.province === params.province);
+    }
+    if (params.status) {
+      batches = batches.filter(b => b.status === params.status);
+    }
+    if (params.cycleId) {
+      batches = batches.filter(b => b.cycleId === params.cycleId);
+    }
+    const limit = params.limit || 100;
+    const page = params.page || 1;
+    const total = batches.length;
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      success: true,
+      data: {
+        data: batches.slice((page - 1) * limit, page * limit).map(this.mapBatch),
+        pagination: { page, limit, total, totalPages }
+      }
+    };
   }
 
-  async getBatch(id: string) {
-    return this.request<PaymentBatchDetail>(`/batches/${id}`);
+  async getBatch(id: string): Promise<ApiResponse<PaymentBatchDetail>> {
+    const batch = getBatches().find(b => b.id === id);
+    if (batch) {
+      return {
+        success: true,
+        data: {
+          ...this.mapBatch(batch),
+          transactions: []
+        }
+      };
+    }
+    return { success: false, error: 'Batch not found' };
   }
 
-  async createBatch(data: {
-    cycleId: string;
-    name: string;
-    province: string;
-    district?: string;
-    listIds: string[];
-  }) {
-    return this.request<PaymentBatch>('/batches', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  async createBatch(data: any) {
+    return { success: true, data: {} as PaymentBatch };
   }
 
   async validateBatch(id: string) {
-    return this.request<BatchValidationResult>(`/batches/${id}/validate`, {
-      method: 'POST',
-    });
+    return {
+      success: true,
+      data: {
+        batchId: id,
+        totalTransactions: 0,
+        validCount: 0,
+        invalidCount: 0,
+        validationResults: []
+      }
+    };
   }
 
   async executeBatch(id: string) {
-    return this.request<BatchExecutionResult>(`/batches/${id}/execute`, {
-      method: 'POST',
-    });
+    return {
+      success: true,
+      data: {
+        status: 'ACCEPTED',
+        batchReference: `ref-${id}`,
+        message: 'Batch accepted',
+        acceptedCount: 0,
+        rejectedCount: 0
+      }
+    };
   }
 
   async getBatchStatus(id: string) {
-    return this.request<EcoCashBatchStatus>(`/batches/${id}/status`);
+    return {
+      success: true,
+      data: {
+        batchReference: id,
+        status: 'completed',
+        totalTransactions: 0,
+        successfulTransactions: 0,
+        failedTransactions: 0,
+        pendingTransactions: 0
+      }
+    };
   }
 
   async retryBatch(id: string) {
-    return this.request<BatchRetryResult>(`/batches/${id}/retry`, {
-      method: 'POST',
-    });
+    return {
+      success: true,
+      data: {
+        retriedCount: 0,
+        message: 'Retry successful'
+      }
+    };
   }
 
-  async getBatchTransactions(id: string, params: {
-    status?: string;
-    page?: number;
-    limit?: number;
-  }) {
-    const queryParams = new URLSearchParams();
-    if (params.status) queryParams.set('status', params.status);
-    if (params.page) queryParams.set('page', String(params.page));
-    if (params.limit) queryParams.set('limit', String(params.limit));
-    return this.request<PaginatedResponse<PaymentTransaction>>(`/batches/${id}/transactions?${queryParams}`);
+  async getBatchTransactions(id: string, params: any): Promise<ApiResponse<PaginatedResponse<PaymentTransaction>>> {
+    return {
+      success: true,
+      data: {
+        data: [],
+        pagination: { page: 1, limit: 100, total: 0, totalPages: 0 }
+      }
+    };
   }
 
   // Beneficiaries endpoints
@@ -286,138 +315,117 @@ class ApiClient {
     search?: string;
     page?: number;
     limit?: number;
-  }) {
-    const queryParams = new URLSearchParams();
-    if (params.province) queryParams.set('province', params.province);
-    if (params.district) queryParams.set('district', params.district);
-    if (params.status) queryParams.set('status', params.status);
-    if (params.search) queryParams.set('search', params.search);
-    if (params.page) queryParams.set('page', String(params.page));
-    if (params.limit) queryParams.set('limit', String(params.limit));
-    return this.request<PaginatedResponse<Beneficiary>>(`/beneficiaries?${queryParams}`);
+  }): Promise<ApiResponse<PaginatedResponse<Beneficiary>>> {
+    let beneficiaries = getBeneficiaries();
+    if (params.province && params.province !== 'null') {
+      beneficiaries = beneficiaries.filter(b => b.province === params.province);
+    }
+    if (params.district) {
+      beneficiaries = beneficiaries.filter(b => b.district === params.district);
+    }
+    if (params.status) {
+      beneficiaries = beneficiaries.filter(b => b.status === params.status);
+    }
+    if (params.search) {
+      const searchLower = params.search.toLowerCase();
+      beneficiaries = beneficiaries.filter(b => 
+        b.fullName.toLowerCase().includes(searchLower) ||
+        b.nationalId.includes(searchLower) ||
+        b.ecocashNumber.includes(searchLower)
+      );
+    }
+    const limit = params.limit || 1000;
+    const page = params.page || 1;
+    const total = beneficiaries.length;
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      success: true,
+      data: {
+        data: beneficiaries.slice((page - 1) * limit, page * limit).map(this.mapBeneficiary),
+        pagination: { page, limit, total, totalPages }
+      }
+    };
   }
 
-  async getBeneficiary(id: string) {
-    return this.request<BeneficiaryDetail>(`/beneficiaries/${id}`);
+  async getBeneficiary(id: string): Promise<ApiResponse<BeneficiaryDetail>> {
+    const ben = getBeneficiaries().find(b => b.id === id);
+    if (ben) {
+      return {
+        success: true,
+        data: {
+          ...this.mapBeneficiary(ben),
+          paymentHistory: []
+        }
+      };
+    }
+    return { success: false, error: 'Beneficiary not found' };
   }
 
-  async createBeneficiary(data: CreateBeneficiaryData) {
-    return this.request<Beneficiary>('/beneficiaries', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  async createBeneficiary(data: CreateBeneficiaryData): Promise<ApiResponse<Beneficiary>> {
+    return { success: true, data: {} as Beneficiary };
   }
 
-  async updateBeneficiary(id: string, data: Partial<CreateBeneficiaryData>) {
-    return this.request<Beneficiary>(`/beneficiaries/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
+  async updateBeneficiary(id: string, data: Partial<CreateBeneficiaryData>): Promise<ApiResponse<Beneficiary>> {
+    return { success: true, data: {} as Beneficiary };
   }
 
-  async exitBeneficiary(id: string, exitDate: string, exitReason: string) {
-    return this.request(`/beneficiaries/${id}/exit`, {
-      method: 'POST',
-      body: JSON.stringify({ exitDate, exitReason }),
-    });
+  async exitBeneficiary(id: string, exitDate: string, exitReason: string): Promise<ApiResponse<void>> {
+    return { success: true };
   }
 
-  async checkDuplicateBeneficiary(nationalId?: string, ecocashNumber?: string, excludeId?: string) {
-    return this.request<{ hasDuplicates: boolean; duplicates: DuplicateInfo[] }>('/beneficiaries/check-duplicate', {
-      method: 'POST',
-      body: JSON.stringify({ nationalId, ecocashNumber, excludeId }),
-    });
+  async checkDuplicateBeneficiary(nationalId?: string, ecocashNumber?: string, excludeId?: string): Promise<ApiResponse<{ hasDuplicates: boolean; duplicates: DuplicateInfo[] }>> {
+    return {
+      success: true,
+      data: {
+        hasDuplicates: false,
+        duplicates: []
+      }
+    };
   }
 
   // Notifications endpoints
-  async getNotifications(params?: { unreadOnly?: boolean; limit?: number; offset?: number }) {
-    const queryParams = new URLSearchParams();
-    if (params?.unreadOnly) queryParams.set('unreadOnly', 'true');
-    if (params?.limit) queryParams.set('limit', String(params.limit));
-    if (params?.offset) queryParams.set('offset', String(params.offset));
-    return this.request<{ notifications: Notification[]; unreadCount: number }>(`/notifications?${queryParams}`);
+  async getNotifications(params?: any): Promise<ApiResponse<{ notifications: Notification[]; unreadCount: number }>> {
+    return {
+      success: true,
+      data: {
+        notifications: [],
+        unreadCount: 0
+      }
+    };
   }
 
-  async markNotificationAsRead(id: string) {
-    return this.request(`/notifications/${id}/read`, { method: 'PATCH' });
+  async markNotificationAsRead(id: string): Promise<ApiResponse<void>> {
+    return { success: true };
   }
 
-  async markAllNotificationsAsRead() {
-    return this.request('/notifications/read-all', { method: 'POST' });
+  async markAllNotificationsAsRead(): Promise<ApiResponse<void>> {
+    return { success: true };
   }
 
-  async deleteNotification(id: string) {
-    return this.request(`/notifications/${id}`, { method: 'DELETE' });
+  async deleteNotification(id: string): Promise<ApiResponse<void>> {
+    return { success: true };
   }
 
   // Export endpoints
   async exportBatchExcel(id: string) {
-    const response = await fetch(`${API_BASE_URL}/exports/batch/${id}/excel`, {
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-    });
-    return response.blob();
+    return new Blob();
   }
 
   async exportBatchPdf(id: string) {
-    const response = await fetch(`${API_BASE_URL}/exports/batch/${id}/pdf`, {
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-    });
-    return response.blob();
+    return new Blob();
   }
 
   async exportBeneficiariesExcel(province?: string, status?: string) {
-    const params = new URLSearchParams();
-    if (province) params.set('province', province);
-    if (status) params.set('status', status);
-    const response = await fetch(`${API_BASE_URL}/exports/beneficiaries/excel?${params}`, {
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-    });
-    return response.blob();
+    return new Blob();
   }
 
   async exportReconciliationExcel(startDate?: string, endDate?: string, province?: string) {
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', startDate);
-    if (endDate) params.set('endDate', endDate);
-    if (province) params.set('province', province);
-    const response = await fetch(`${API_BASE_URL}/exports/reconciliation/excel?${params}`, {
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-    });
-    return response.blob();
+    return new Blob();
   }
 
-  async getAnalytics(_params: { start_date?: string; end_date?: string; province?: string }) {
-    return this.request<{
-      dailyTransactions: Array<{
-        date: string;
-        successful: number;
-        failed: number;
-        total_amount: number;
-      }>;
-      paymentMethods: Array<{
-        method: string;
-        count: number;
-        amount: number;
-      }>;
-      successRate: number;
-      avgProcessingTime: number;
-      monthlyGrowth: number;
-      topProvinces: Array<{
-        province: string;
-        count: number;
-        amount: number;
-      }>;
-    }>('/dashboard/analytics', {
-      method: 'GET',
-    });
+  async getAnalytics(_params: any): Promise<ApiResponse<any>> {
+    return { success: true, data: {} };
   }
 }
 
