@@ -1,0 +1,142 @@
+[
+  {
+    "A": "Village Health Workers - National Level Results"
+  },
+  {
+    "G": "Over/Under Payment",
+    "H": "Column Labels"
+  },
+  {
+    "C": "Row Labels",
+    "D": "Over/Under Payment",
+    "G": "Row Labels",
+    "H": "No payment",
+    "I": "Overpayment",
+    "J": "Overpayment: inactive but paid",
+    "K": "Underpayment",
+    "L": "Underpayment, only 1 quarter paid",
+    "M": "Underpayment, both quarters",
+    "N": "Underpayment, for 2nd quarter",
+    "O": "Grand Total"
+  },
+  {
+    "C": "BULAWAYO",
+    "D": -2400,
+    "G": "BULAWAYO",
+    "H": -2160,
+    "J": 120,
+    "K": -60,
+    "L": -300,
+    "O": -2400
+  },
+  {
+    "C": "HARARE",
+    "D": -1170,
+    "G": "HARARE",
+    "H": -1080,
+    "N": -90,
+    "O": -1170
+  },
+  {
+    "C": "MANICALAND",
+    "D": 2505,
+    "G": "MANICALAND",
+    "H": -240,
+    "I": 120,
+    "J": 2865,
+    "L": -60,
+    "N": -180,
+    "O": 2505
+  },
+  {
+    "C": "MASH  CENTRAL",
+    "D": 9195,
+    "G": "MASH  CENTRAL",
+    "H": -120,
+    "I": 28680,
+    "L": -480,
+    "M": -150,
+    "N": -18735,
+    "O": 9195
+  },
+  {
+    "C": "MASH EAST",
+    "D": -1590,
+    "G": "MASH EAST",
+    "H": -2400,
+    "I": 510,
+    "J": 1440,
+    "K": -60,
+    "M": -1080,
+    "O": -1590
+  },
+  {
+    "C": "MASH WEST",
+    "D": -2575,
+    "G": "MASH WEST",
+    "H": -1800,
+    "I": 300,
+    "J": 405,
+    "K": -30,
+    "M": -1050,
+    "N": -400,
+    "O": -2575
+  },
+  {
+    "C": "MASVINGO",
+    "D": 7800,
+    "G": "MASVINGO",
+    "H": -3240,
+    "I": 12945,
+    "J": 120,
+    "K": -180,
+    "L": -60,
+    "N": -1785,
+    "O": 7800
+  },
+  {
+    "C": "MAT NORTH",
+    "D": 1245,
+    "G": "MAT NORTH",
+    "H": -1800,
+    "I": 1065,
+    "J": 3330,
+    "L": -180,
+    "N": -1170,
+    "O": 1245
+  },
+  {
+    "C": "MAT SOUTH",
+    "D": -375,
+    "G": "MAT SOUTH",
+    "H": -960,
+    "I": 615,
+    "J": 210,
+    "K": -60,
+    "L": -180,
+    "O": -375
+  },
+  {
+    "C": "MIDLANDS",
+    "D": -1260,
+    "G": "MIDLANDS",
+    "H": -1440,
+    "I": 360,
+    "J": 120,
+    "K": -300,
+    "O": -1260
+  },
+  {
+    "C": "Grand Total",
+    "D": 11375,
+    "G": "Grand Total",
+    "H": -15240,
+    "I": 44595,
+    "J": 8610,
+    "K": -690,
+    "L": -1260,
+    "M": -2280,
+    "N": -22360,
+    "O": 11375
+  }
+]
