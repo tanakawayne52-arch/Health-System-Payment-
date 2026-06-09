@@ -2,101 +2,77 @@
 
 ## Overview
 
-Welcome to the FEPMS (Finance & Education Payment Management System) - a comprehensive Vite-based React application for government healthcare worker payments and beneficiary management.
+Welcome to the FEPMS (Front-End Payment Management System) - a comprehensive Vite-based React application for government healthcare worker payments and beneficiary management, featuring a high-performance PHP API backend.
 
 **Status**: ✅ Production Ready  
-**Version**: 1.0.0  
-**Built**: June 2, 2026  
-**Framework**: Vite 7 + React 19 + TypeScript 5.9
+**Version**: 1.1.0  
+**Built**: June 9, 2026  
+**Stack**: React 19 + PHP 8.2 + MySQL 8
 
 ## Quick Links
 
 ### For Getting Started
-- **[Developer Guide](./DEVELOPER_GUIDE.md)** - Setup, installation, common tasks
-- **[Quick Start](#quick-start)** - 3 commands to get running
+- **[Developer Guide](./DEVELOPER_GUIDE.md)** - Setup, installation, API documentation
+- **[Quick Start](#quick-start)** - Get the system running in 2 steps
 
 ### For Learning the Project
-- **[BUILD_SUMMARY.md](./BUILD_SUMMARY.md)** - What was built and key features
-- **[FEPMS_BUILD.md](./FEPMS_BUILD.md)** - Detailed feature documentation
+- **[BUILD_SUMMARY.md](./BUILD_SUMMARY.md)** - Project overview and backend infrastructure
+- **[FEPMS_BUILD.md](./FEPMS_BUILD.md)** - Detailed feature and architectural documentation
 
 ### For Deployment
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Step-by-step deployment guide
-- **[Production Checklist](./DEPLOYMENT.md#pre-deployment-requirements)** - Verify before deploying
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Step-by-step deployment guide for frontend and PHP API
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Start PHP API (Backend)
 ```bash
-pnpm install
+cd backend/php-api
+php -S 127.0.0.1:8000 index.php
 ```
 
-### 2. Start Development Server
+### 2. Start Vite Dev Server (Frontend)
 ```bash
-pnpm dev
+cd frontend
+npm run dev
 ```
-Open http://localhost:3000 in your browser
-
-### 3. Login
-Use any role (Finance Officer, Provincial Officer, HR Custodian, National Admin)
+Open http://localhost:5173 in your browser
 
 ## Project Structure
 
 ```
 fepms/
-├── src/
-│   ├── pages/              # 15 feature pages + 4 dashboards
-│   ├── components/         # 8 custom components + 40+ UI components
-│   ├── hooks/             # 3 custom React hooks
-│   ├── data/              # Test data and persistence
-│   ├── types/             # TypeScript definitions
-│   ├── lib/               # Utility functions
-│   ├── App.tsx            # Main app with routing
-│   └── main.tsx           # Entry point
-├── public/                # Static assets
-├── docs/                  # Documentation
-├── vite.config.ts         # Vite configuration
-├── tsconfig.json          # TypeScript configuration
-├── tailwind.config.js     # Tailwind CSS configuration
-└── package.json           # Dependencies
-
-Documentation:
+├── frontend/              # React application
+│   ├── src/
+│   │   ├── pages/         # Dashboards and feature pages
+│   │   ├── components/    # Branded UI components
+│   │   └── lib/api.ts     # API client (points to PHP)
+├── backend/
+│   ├── php-api/           # PHP REST API
+│   │   ├── config.php     # Database connection
+│   │   └── index.php      # Router
+│   └── database/          # MySQL Schema and Data
 ├── INDEX.md               # This file
 ├── BUILD_SUMMARY.md       # Project overview
-├── FEPMS_BUILD.md         # Feature documentation
-├── DEVELOPER_GUIDE.md     # Development guide
-└── DEPLOYMENT.md          # Deployment guide
+└── DEVELOPER_GUIDE.md     # Development guide
 ```
 
 ## Features Implemented
 
 ### 🎯 Dashboards (Role-Specific)
-- ✅ Finance Officer Dashboard - Real-time disbursement tracking
-- ✅ Provincial Officer Dashboard - List management and certification
-- ✅ HR Custodian Dashboard - Beneficiary management
-- ✅ National Admin Dashboard - System oversight and monitoring
+- ✅ Finance Officer Dashboard - Real-time MySQL data tracking
+- ✅ Provincial Officer Dashboard - Provincial submission management
+- ✅ HR Custodian Dashboard - VHW records and integrity scores
+- ✅ National Admin Dashboard - National oversight and overrides
 
 ### 📊 Analytics & Charts
 - ✅ Area charts for transaction trends
-- ✅ Bar charts for province comparisons
-- ✅ Line charts for variance analysis
-- ✅ Pie charts for distribution
-- ✅ Real-time statistics widgets
-
-### 📄 Feature Pages
-- ✅ Beneficiary Management - Add, edit, search, filter
-- ✅ Payment Lists - Create, submit, certify
-- ✅ Payment Batches - Manage and execute
-- ✅ Payment Cycles - Schedule and track
-- ✅ Reconciliation - Certified vs paid verification
-- ✅ Audit Trail - Activity logging
-- ✅ Reports - Analytics and exports
-- ✅ Users - Account management
+- ✅ Pie charts for provincial distribution
+- ✅ Real-time statistics from live MySQL data
 
 ### 🔐 Security & Auth
+- ✅ JWT-based secure authentication (PHP)
 - ✅ Role-based access control (RBAC)
-- ✅ Secure authentication
-- ✅ Protected routes
-- ✅ Audit logging
+- ✅ Secure PDO database communication
 
 ### 💾 Data Management
 - ✅ localStorage persistence

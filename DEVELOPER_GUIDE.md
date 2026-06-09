@@ -4,100 +4,61 @@
 
 ### Prerequisites
 - Node.js 18+ 
-- pnpm (or npm/yarn)
+- PHP 8.2+ (with PDO MySQL extension)
+- MySQL 8.0+
 
-### Installation
+### Installation & Setup
+
+1. **Frontend Setup**
 ```bash
-# Clone repository (if applicable)
-cd fepms-project
-
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
-
-# Open http://localhost:3000 in browser
+cd frontend
+npm install
+npm run dev
 ```
+
+2. **Backend Setup (PHP API)**
+```bash
+cd backend/php-api
+# Start the PHP development server
+php -S 127.0.0.1:8000 index.php
+```
+
+3. **Database Setup**
+- Import `backend/database/schema.sql` into your MySQL server.
+- Import `backend/database/data.sql` for initial seed data.
+- Update `backend/php-api/config.php` with your database credentials.
 
 ## Project Architecture
 
-### Routing Structure
-```
-/ (DashboardRouter)
-  ├─ /login (LoginPage)
-  ├─ /beneficiaries (BeneficiariesPage)
-  ├─ /payment-lists (PaymentListsPage)
-  ├─ /payment-lists/new (PaymentListCreatePage)
-  ├─ /payment-batches (PaymentBatchesPage)
-  ├─ /payment-cycles (PaymentCyclesPage)
-  ├─ /reconciliation (ReconciliationPage)
-  ├─ /audit-trail (AuditTrailPage)
-  ├─ /reports (ReportsPage)
-  └─ /users (UsersPage)
-```
+### Routing Structure (Frontend)
+- `/`: Role-specific Dashboards
+- `/login`: Secure Entry
+- `/beneficiaries`: VHW Records
+- `/payment-lists`: Provincial Submissions
+- `/payment-batches`: Batch Execution
+- `/payment-cycles`: Schedule Management
+- `/reconciliation`: Financial Verification
+- `/audit-trail`: System Logs
+- `/reports`: Data Exports
+- `/users`: Account Management
 
-### Component Hierarchy
-```
-App (Router setup)
-└─ AuthProvider
-   └─ ToastProvider
-      └─ BrowserRouter
-         └─ AppLayout
-            ├─ Dashboard (role-specific)
-            └─ Feature Pages
-```
+### Backend API Endpoints (PHP)
+- `POST /api/auth/login`: Authenticate and get JWT.
+- `GET /api/auth/me`: Get current user info.
+- `GET /api/beneficiaries`: Retrieve paginated VHW data.
+- `GET /api/batches`: List payment batches.
+- `GET /api/cycles`: Fetch payment cycles.
 
-## Common Development Tasks
+## Development Standards
 
-### Adding a New Page
+### API Communication
+- All frontend requests should go through `frontend/src/lib/api.ts`.
+- The `API_BASE_URL` is configured to `http://127.0.0.1:8000/api`.
 
-1. Create file in `src/pages/YourPage.tsx`:
-```tsx
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/useToast';
-
-export default function YourPage() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { addToast } = useToast();
-
-  return (
-    <div className="space-y-6">
-      {/* Your content */}
-    </div>
-  );
-}
-```
-
-2. Add route in `src/App.tsx`:
-```tsx
-<Route 
-  path="/your-page" 
-  element={
-    <ProtectedRoute allowedRoles={['finance_officer']}>
-      <AppLayout><YourPage /></AppLayout>
-    </ProtectedRoute>
-  } 
-/>
-```
-
-### Adding a New Component
-
-1. Create in `src/components/YourComponent.tsx`:
-```tsx
-interface YourComponentProps {
-  title: string;
-  // ... other props
-}
-
-export default function YourComponent({ title }: YourComponentProps) {
-  return (
-    <div className="bg-white rounded-lg shadow p-5">
-      <h3 className="font-semibold text-[#1e293b]">{title}</h3>
-      {/* Component content */}
-    </div>
+### UI Components
+- Use Tailwind CSS for all styling.
+- Follow the MoHCC brand guidelines (Deep Navy: `#0f172a`, Teal: `#0d9488`).
+- Maintain responsiveness for both desktop and tablet views.
   );
 }
 ```
