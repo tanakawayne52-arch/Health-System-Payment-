@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
+import { usePaymentLists, useBeneficiaries, useVhwMasterList } from '@/hooks/useData';
 import StatCard from '@/components/StatCard';
 import Badge from '@/components/Badge';
-import { getPaymentLists, getBeneficiaries, getVhwMasterList } from '@/data/seed';
 import { FileText, CheckCircle, Users, AlertCircle, FilePlus, Send, Download, Eye, MapPin } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import Faux3DBarChart from '@/components/Faux3DBarChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -17,9 +17,12 @@ export default function ProvincialDashboard() {
   const province = user?.province || 'BULAWAYO';
   const [selectedVhwDistrict, setSelectedVhwDistrict] = useState<string>('all');
 
-  const lists = getPaymentLists().filter(l => l.province === province);
-  const beneficiaries = getBeneficiaries().filter(b => b.province === province);
-  const vhwMasterList = getVhwMasterList();
+  const [allLists] = usePaymentLists();
+  const [beneficiaries] = useBeneficiaries();
+  const [vhwMasterList] = useVhwMasterList();
+
+  const lists = allLists.filter(l => l.province === province);
+  const provinceBeneficiaries = beneficiaries.filter(b => b.province === province);
   const provinceVhwList = vhwMasterList.filter(record => record.province === province);
   const vhwDistricts = [...new Set(provinceVhwList.map(record => record.district))].filter(d => d);
 
@@ -59,7 +62,7 @@ export default function ProvincialDashboard() {
 
   const recentLists = lists.slice(0, 5);
 
-  const districtCounts = beneficiaries.reduce((acc, b) => {
+  const districtCounts = provinceBeneficiaries.reduce((acc, b) => {
     acc[b.district] = (acc[b.district] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -69,7 +72,7 @@ export default function ProvincialDashboard() {
     .sort((a, b) => b.value - a.value)
     .slice(0, 8);
 
-  const statusCounts = beneficiaries.reduce((acc, b) => {
+  const statusCounts = provinceBeneficiaries.reduce((acc, b) => {
     acc[b.status] = (acc[b.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -96,7 +99,7 @@ export default function ProvincialDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-5">
         <StatCard label="My Active Lists" value={activeLists} icon={FileText} delay={0} />
         <StatCard label="Certified Lists" value={certifiedLists} icon={CheckCircle} delay={100} />
-        <StatCard label="Total Beneficiaries" value={beneficiaries.length.toLocaleString()} icon={Users} delay={200} />
+        <StatCard label="Total Beneficiaries" value={provinceBeneficiaries.length.toLocaleString()} icon={Users} delay={200} />
         <StatCard label="Pending Actions" value={pendingActions} icon={AlertCircle} delay={300} />
         {/* VHW Stats */}
         {vhwStats.map((stat, index) => (
@@ -107,30 +110,21 @@ export default function ProvincialDashboard() {
       {/* VHW Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* VHW Districts Bar Chart */}
-        <div className="bg-white rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-5 animate-fade-up">
-          <h3 className="text-base font-semibold text-[#1e293b] mb-4">VHWs per District</h3>
+        <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-6 animate-fade-up">
+          <h3 className="text-base font-semibold text-[#1e293b] mb-6">Workforce Volume by District</h3>
           <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={vhwDistrictData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="district" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 11, fill: '#475569' }} />
-                <YAxis tick={{ fontSize: 11, fill: '#475569' }} />
-                <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
-                <Legend />
-                <Bar dataKey="count" fill="#0d9488" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <Faux3DBarChart data={vhwDistrictData} categoriesKey="district" series={[{key: 'count', color: '#0d9488'}]} height={300} />
           </div>
         </div>
 
         {/* VHW Payment Categories */}
-        <div className="bg-white rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-5 animate-fade-up">
-          <h3 className="text-base font-semibold text-[#1e293b] mb-4">VHW Payment Categories</h3>
+        <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-6 animate-fade-up">
+          <h3 className="text-base font-semibold text-[#1e293b] mb-6">Payment Category Breakdown</h3>
           <div className="grid grid-cols-1 gap-3">
             {Object.entries(vhwPaymentCategoryCounts).map(([category, count], index) => (
-              <div key={index} className="p-4 bg-gray-50 rounded-lg border">
-                <div className="text-lg font-semibold">{category}</div>
-                <div className="text-2xl font-bold">{count}</div>
+              <div key={index} className="p-4 bg-white rounded-xl border border-slate-100 shadow-sm hover:border-[#0d9488]/30 transition-all">
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{category}</div>
+                <div className="text-2xl font-bold text-slate-900 mt-1">{count.toLocaleString()}</div>
               </div>
             ))}
           </div>
@@ -319,15 +313,7 @@ export default function ProvincialDashboard() {
           <div className="bg-white rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-5 animate-fade-up" style={{ animationDelay: '500ms' }}>
             <h3 className="text-base font-semibold text-[#1e293b] mb-4">Province Beneficiary Summary</h3>
             <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#475569' }} />
-                  <YAxis tick={{ fontSize: 11, fill: '#475569' }} />
-                  <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
-                  <Bar dataKey="value" fill="#0d9488" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <Faux3DBarChart data={chartData} categoriesKey="name" series={[{key: 'value', color: '#0d9488'}]} height={200} />
             </div>
             <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[#e2e8f0]">
               <span className="text-xs text-[#475569]">

@@ -116,3 +116,9 @@ INSERT INTO vhw_master_list (id, province, district, health_centre, village, war
 ('v1', 'BULAWAYO', 'EMAKHANDENI', 'MAGWEGWE', '29', '', 'ESNATH', 'MLAUZI', '08-307760Y73', '07/07/1947', 'F', '734326147', 1, 1, NULL, NULL, 0, 0, NULL, NULL, 0, 'No payment', -120, 1, 'Original', '7/7/1947', 78, NULL, NULL, NULL, NULL, NULL, NULL, 'Check Ward', 'Check Ward', '1', NOW(), NOW()),
 ('v2', 'BULAWAYO', 'EMAKHANDENI', 'EMAKHANDENI', '11', '', 'PATIENCE', 'MOYO', '73-121614P29', '01/03/1991', 'F', '771048629', 1, 1, NULL, NULL, 1, 1, NULL, NULL, 120, 'Correct', 0, 1, 'Original', '3/1/1991', 34, NULL, NULL, NULL, NULL, NULL, NULL, 'Check Ward', 'Check Ward', '1', NOW(), NOW()),
 ('v3', 'BULAWAYO', 'EMAKHANDENI', 'COWDRAY PARK', '28', '', 'JOYBAIRN', 'MOYO', '84-053745Q84', '24/03/1994', 'F', '771071577', 1, 1, NULL, NULL, 1, 1, NULL, NULL, 120, 'Correct', 0, 1, 'Original', '3/24/1994', 31, NULL, NULL, NULL, NULL, NULL, NULL, 'Check Ward', 'Check Ward', '1', NOW(), NOW());
+
+-- Insert Sample Notifications
+INSERT INTO notifications (id, user_id, type, title, message, link, is_read, created_at) VALUES
+('n1', 'admin_national', 'info', 'Welcome back!', 'Your dashboard has been updated with new payment details.', NULL, 0, NOW()),
+('n2', 'po_harare', 'warning', 'Batch delayed', 'Payment batch BULAWAYO - Q1 2026 is pending validation.', NULL, 0, NOW()),
+('n3', 'hr_bulawayo', 'success', 'Report available', 'Your beneficiary summary export is ready for download.', NULL, 0, NOW());

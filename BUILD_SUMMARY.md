@@ -129,7 +129,7 @@ Root:
 
 ```bash
 # Start development server
-pnpm dev           # http://localhost:3000
+pnpm dev           # http://localhost:3001
 
 # Build for production
 pnpm build         # Creates dist/ folder

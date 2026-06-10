@@ -1,41 +1,57 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/useToast';
-import { getAuditLogs } from '@/data/seed';
+import { api } from '@/lib/api';
+import type { AuditLog } from '@/types';
+import PaginationControls from '@/components/PaginationControls';
+import { PAGE_SIZE, defaultPagination, type PaginationMeta } from '@/constants/pagination';
 import Badge from '@/components/Badge';
-import { Search, Download, ChevronLeft, ChevronRight, X, Eye, Copy, User, Calendar, Shield, Info } from 'lucide-react';
+import { Search, Download, X, Eye, Copy, User, Calendar, Shield, Info } from 'lucide-react';
 
 export default function AuditTrailPage() {
   const { addToast } = useToast();
-  const [logs] = useState(getAuditLogs());
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta>(defaultPagination());
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('ALL');
   const [entityFilter, setEntityFilter] = useState('ALL');
   const [page, setPage] = useState(1);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
-  const pageSize = 25;
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filtered = useMemo(() => {
-    let data = [...logs];
-    if (search) {
-      const s = search.toLowerCase();
-      data = data.filter(l =>
-        l.userName.toLowerCase().includes(s) ||
-        l.action.toLowerCase().includes(s) ||
-        l.entityType.toLowerCase().includes(s) ||
-        l.entityId.toLowerCase().includes(s)
-      );
+  const fetchLogs = useCallback(async () => {
+    setIsLoading(true);
+    const result = await api.getAuditLogs({
+      page,
+      limit: PAGE_SIZE,
+      search: search || undefined,
+      action: actionFilter !== 'ALL' ? actionFilter : undefined,
+      entityType: entityFilter !== 'ALL' ? entityFilter : undefined,
+    });
+    if (result.success && Array.isArray(result.data)) {
+      setLogs(result.data.map(l => ({
+        id: l.id,
+        userId: l.userId ?? '',
+        userName: l.userName,
+        userRole: l.userRole,
+        action: l.action,
+        entityType: l.entityType,
+        entityId: l.entityId,
+        oldValues: l.oldValues,
+        newValues: l.newValues,
+        reason: l.reason,
+        ipAddress: l.ipAddress,
+        timestamp: l.timestamp,
+      })));
+      if (result.pagination) setPagination(result.pagination);
     }
-    if (actionFilter !== 'ALL') data = data.filter(l => l.action === actionFilter);
-    if (entityFilter !== 'ALL') data = data.filter(l => l.entityType === entityFilter);
-    return data;
-  }, [logs, search, actionFilter, entityFilter]);
+    setIsLoading(false);
+  }, [page, search, actionFilter, entityFilter]);
 
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  useEffect(() => { void fetchLogs(); }, [fetchLogs]);
 
   const exportLogs = () => {
     const headers = ['Timestamp', 'User', 'Role', 'Action', 'Entity Type', 'Entity ID', 'Details', 'IP Address'];
-    const rows = filtered.map(l => [
+    const rows = logs.map(l => [
       new Date(l.timestamp).toLocaleString(), l.userName, l.userRole, l.action,
       l.entityType, l.entityId, l.reason || '-', l.ipAddress
     ]);
@@ -48,8 +64,8 @@ export default function AuditTrailPage() {
     a.click();
   };
 
-  const actions = [...new Set(logs.map(l => l.action))];
-  const entities = [...new Set(logs.map(l => l.entityType))];
+  const actions = ['CREATE', 'UPDATE', 'DELETE', 'SUBMIT', 'CERTIFY', 'REJECT', 'VALIDATE', 'EXECUTE', 'LOGIN', 'LOGOUT', 'APPROVE_EXCEPTION'];
+  const entities = ['PaymentList', 'PaymentBatch', 'Beneficiary', 'PaymentCycle', 'User', 'ExceptionRequest'];
 
   return (
     <div className="space-y-5">
@@ -99,10 +115,12 @@ export default function AuditTrailPage() {
               </tr>
             </thead>
             <tbody>
-              {paginated.length === 0 ? (
+              {isLoading ? (
+                <tr><td colSpan={8} className="text-center py-12 text-[#94a3b8]">Loading audit logs...</td></tr>
+              ) : logs.length === 0 ? (
                 <tr><td colSpan={8} className="text-center py-12 text-[#94a3b8]"><p className="text-base font-semibold text-[#1e293b] mb-1">No audit events found</p></td></tr>
               ) : (
-                paginated.map(log => (
+                logs.map(log => (
                   <React.Fragment key={log.id}>
                     <tr className="border-b border-[#e2e8f0] hover:bg-[rgba(13,148,136,0.03)] transition-colors group">
                       <td className="px-4 py-3">
@@ -153,7 +171,7 @@ export default function AuditTrailPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3"><Badge status={log.action.toLowerCase()}>{log.action}</Badge></td>
+                      <td className="px-4 py-3"><Badge status={log.action?.toLowerCase() || 'info'}>{log.action}</Badge></td>
                       <td className="px-4 py-3">
                         <div className="relative group/tooltip">
                           <div className="flex items-center gap-1 text-xs text-[#475569]">
@@ -202,14 +220,7 @@ export default function AuditTrailPage() {
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-between px-5 py-3 border-t border-[#e2e8f0]">
-          <p className="text-xs text-[#475569]">Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, filtered.length)} of {filtered.length.toLocaleString()}</p>
-          <div className="flex items-center gap-1">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 text-[#475569] hover:bg-[#f1f5f9] rounded disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
-            <span className="text-xs text-[#475569] px-2">Page {page} of {totalPages || 1}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1.5 text-[#475569] hover:bg-[#f1f5f9] rounded disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
-          </div>
-        </div>
+        <PaginationControls pagination={pagination} onPageChange={setPage} />
       </div>
     </div>
   );

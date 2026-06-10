@@ -27,7 +27,7 @@ Welcome to the FEPMS (Front-End Payment Management System) - a comprehensive Vit
 ### 1. Start PHP API (Backend)
 ```bash
 cd backend/php-api
-php -S 127.0.0.1:8000 index.php
+php -S 127.0.0.1:3000 router.php
 ```
 
 ### 2. Start Vite Dev Server (Frontend)
@@ -35,7 +35,7 @@ php -S 127.0.0.1:8000 index.php
 cd frontend
 npm run dev
 ```
-Open http://localhost:5173 in your browser
+Open http://localhost:3001 in your browser
 
 ## Project Structure
 

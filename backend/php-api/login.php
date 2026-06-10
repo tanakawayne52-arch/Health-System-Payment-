@@ -11,8 +11,11 @@ if (!empty($data->email) && !empty($data->password)) {
     $stmt = $conn->prepare($query);
     $stmt->execute([$email]);
 
-    if ($stmt->rowCount() > 0) {
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt->execute([$email]);
+    
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($user) {
 
         if ($user['is_active'] == 0) {
             sendResponse(false, null, "Account is inactive", 401);
@@ -28,7 +31,7 @@ if (!empty($data->email) && !empty($data->password)) {
 
         if ($isValid) {
             // Update last login
-            $updateQuery = "UPDATE users SET last_login = NOW() WHERE id = ?";
+            $updateQuery = "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?";
             $updateStmt = $conn->prepare($updateQuery);
             $updateStmt->execute([$user['id']]);
 

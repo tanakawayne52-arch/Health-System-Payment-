@@ -22,6 +22,10 @@ const PaymentCyclesPage = React.lazy(() => import('@/pages/PaymentCyclesPage'));
 const ReconciliationPage = React.lazy(() => import('@/pages/ReconciliationPage'));
 const VhwNationalDashboard = React.lazy(() => import('@/pages/VhwNationalDashboard'));
 const VhwProvincialDashboard = React.lazy(() => import('@/pages/VhwProvincialDashboard'));
+const VhwMasterRecordsPage = React.lazy(() => import('@/pages/VhwMasterRecordsPage'));
+const WorkforceMasterSummaryPage = React.lazy(() => import('@/pages/WorkforceMasterSummaryPage'));
+const NotificationsPage = React.lazy(() => import('@/pages/NotificationsPage'));
+const PhysicalFacilities = React.lazy(() => import('@/pages/PhysicalFacilities'));
 
 import type { UserRole } from '@/types';
 
@@ -33,26 +37,33 @@ const PageLoader = () => (
 );
 
 function ProtectedRoute({ children, allowedRoles, requireNationalLevel = false }: { children: React.ReactNode; allowedRoles: UserRole[]; requireNationalLevel?: boolean }) {
-  const { isAuthenticated, user, isNationalLevel } = useAuth();
+  const { isAuthenticated, user, isNationalLevel, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
   if (!user || !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (requireNationalLevel && !isNationalLevel) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
 }
 
 function DashboardRouter() {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
+  const { user, isAuthenticated, isLoading } = useAuth();
+  if (isLoading) {
+    return <PageLoader />;
+  }
+  if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
 
   switch (user.role) {
     case 'provincial_officer': return <ProvincialDashboard />;
@@ -63,16 +74,27 @@ function DashboardRouter() {
   }
 }
 
+function NotFoundRedirect() {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return <PageLoader />;
+  return <Navigate to={isAuthenticated ? '/' : '/login'} replace />;
+}
+
+
+
 function App() {
   return (
-    <BrowserRouter>
+<BrowserRouter>
       <AuthProvider>
         <ToastProvider>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/" element={<ProtectedRoute allowedRoles={['provincial_officer', 'hr_custodian', 'finance_officer', 'national_admin']}><AppLayout><DashboardRouter /></AppLayout></ProtectedRoute>} />
+
               <Route path="/beneficiaries" element={<ProtectedRoute allowedRoles={['provincial_officer', 'hr_custodian', 'finance_officer', 'national_admin']}><AppLayout><BeneficiariesPage /></AppLayout></ProtectedRoute>} />
+
+
               <Route path="/payment-lists" element={<ProtectedRoute allowedRoles={['provincial_officer', 'finance_officer', 'national_admin']}><AppLayout><PaymentListsPage /></AppLayout></ProtectedRoute>} />
               <Route path="/payment-lists/new" element={<ProtectedRoute allowedRoles={['provincial_officer']}><AppLayout><PaymentListCreatePage /></AppLayout></ProtectedRoute>} />
               <Route path="/payment-batches" element={<ProtectedRoute allowedRoles={['finance_officer', 'national_admin']}><AppLayout><PaymentBatchesPage /></AppLayout></ProtectedRoute>} />
@@ -83,7 +105,11 @@ function App() {
               <Route path="/users" element={<ProtectedRoute allowedRoles={['national_admin']}><AppLayout><UsersPage /></AppLayout></ProtectedRoute>} />
               <Route path="/vhw-national-dashboard" element={<ProtectedRoute allowedRoles={['provincial_officer', 'hr_custodian', 'finance_officer', 'national_admin']} requireNationalLevel><AppLayout><VhwNationalDashboard /></AppLayout></ProtectedRoute>} />
               <Route path="/vhw-provincial-dashboard" element={<ProtectedRoute allowedRoles={['provincial_officer', 'hr_custodian', 'finance_officer', 'national_admin']}><AppLayout><VhwProvincialDashboard /></AppLayout></ProtectedRoute>} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/vhw-master-records" element={<ProtectedRoute allowedRoles={['national_admin']}><AppLayout><VhwMasterRecordsPage /></AppLayout></ProtectedRoute>} />
+              <Route path="/workforce-summary" element={<ProtectedRoute allowedRoles={['hr_custodian', 'national_admin']}><AppLayout><WorkforceMasterSummaryPage /></AppLayout></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute allowedRoles={['provincial_officer', 'hr_custodian', 'finance_officer', 'national_admin']}><AppLayout><NotificationsPage /></AppLayout></ProtectedRoute>} />
+              <Route path="/facilities" element={<ProtectedRoute allowedRoles={['hr_custodian', 'national_admin']}><AppLayout><PhysicalFacilities /></AppLayout></ProtectedRoute>} />
+              <Route path="*" element={<NotFoundRedirect />} />
             </Routes>
           </Suspense>
           <ToastContainer />

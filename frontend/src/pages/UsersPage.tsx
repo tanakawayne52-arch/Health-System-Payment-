@@ -1,72 +1,102 @@
-import { useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useToast } from '@/hooks/useToast';
-import { getUsers, saveUsers, getAuditLogs, saveAuditLogs } from '@/data/seed';
 import Badge from '@/components/Badge';
 import { ROLE_LABELS } from '@/types';
 import type { User } from '@/types';
-import { UserPlus, Pencil, Eye, X, Trash2, Copy, Mail, Shield, Calendar, MapPin, Info } from 'lucide-react';
+import { UserPlus, Pencil, Eye, X, Trash2, Copy, Mail, Shield, Calendar, MapPin, Info, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function UsersPage() {
   const { addToast } = useToast();
-  const [users, setUsers] = useState<User[]>(getUsers());
+  const [users, setUsers] = useState<User[]>([]);
   const [showDrawer, setShowDrawer] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [provinceFilter, setProvinceFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [page, setPage] = useState(1);
+  const pageSize = 15;
 
-  const handleToggleActive = (u: User) => {
-    const updated = users.map(user => user.id === u.id ? { ...user, isActive: !user.isActive } : user);
-    setUsers(updated);
-    saveUsers(updated);
-    const logs = getAuditLogs();
-     
-    logs.unshift({
-      id: `a${Date.now()}`, userId: 'u4', userName: 'Sarah Ncube', userRole: 'national_admin',
-      action: 'EDIT', entityType: 'User', entityId: u.id,
-      oldValues: { isActive: u.isActive }, newValues: { isActive: !u.isActive },
-      reason: null, ipAddress: '192.168.1.40', timestamp: new Date().toISOString(),
-    });
-    saveAuditLogs(logs);
-    addToast(`User ${u.isActive ? 'deactivated' : 'activated'}`, 'success');
+  // Fetch users from API on mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        // TODO: Implement getUsers endpoint in API when available
+        setUsers([]);
+      } catch (err) {
+        addToast('Failed to load users', 'error');
+      }
+    };
+    void fetchUsers();
+  }, [addToast]);
+
+  const filteredUsers = useMemo(() => {
+    let data = [...users];
+    if (search) {
+      const query = search.toLowerCase();
+      data = data.filter(u =>
+        u.fullName.toLowerCase().includes(query) ||
+        u.email.toLowerCase().includes(query) ||
+        u.id.toLowerCase().includes(query)
+      );
+    }
+    if (roleFilter !== 'ALL') data = data.filter(u => u.role === roleFilter);
+    if (provinceFilter !== 'ALL') data = data.filter(u => u.province === provinceFilter);
+    if (statusFilter !== 'ALL') data = data.filter(u => (statusFilter === 'active') === u.isActive);
+    return data;
+  }, [users, search, roleFilter, provinceFilter, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const paginatedUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
+
+  const handleToggleActive = async (u: User) => {
+    try {
+      const updated = users.map(user => user.id === u.id ? { ...user, isActive: !user.isActive } : user);
+      setUsers(updated);
+      // TODO: Call API to update user status when endpoint becomes available
+      addToast(`User ${u.isActive ? 'deactivated' : 'activated'}`, 'success');
+    } catch (err) {
+      addToast('Failed to update user', 'error');
+    }
   };
 
-  const handleDelete = (u: User) => {
+  const handleDelete = async (u: User) => {
     if (window.confirm(`Are you sure you want to delete user ${u.fullName}?`)) {
-      const updated = users.filter(user => user.id !== u.id);
-      setUsers(updated);
-      saveUsers(updated);
-      const logs = getAuditLogs();
-       
-      logs.unshift({
-        id: `a${Date.now()}`, userId: 'u4', userName: 'Sarah Ncube', userRole: 'national_admin',
-        action: 'DELETE', entityType: 'User', entityId: u.id,
-        oldValues: u as unknown as Record<string, unknown>, newValues: null,
-        reason: null, ipAddress: '192.168.1.40', timestamp: new Date().toISOString(),
-      });
-      saveAuditLogs(logs);
-      addToast(`User ${u.fullName} deleted`, 'success');
+      try {
+        const updated = users.filter(user => user.id !== u.id);
+        setUsers(updated);
+        // TODO: Call API to delete user when endpoint becomes available
+        addToast(`User ${u.fullName} deleted`, 'success');
+      } catch (err) {
+        addToast('Failed to delete user', 'error');
+      }
     }
   };
 
-  const handleSave = (formData: Partial<User>) => {
-    if (editingUser) {
-      const updated = users.map(u => u.id === editingUser.id ? { ...u, ...formData } as User : u);
-      setUsers(updated);
-      saveUsers(updated);
-      addToast('User updated', 'success');
-    } else {
-       
-      const newUser: User = {
-        id: `u${Date.now()}`, email: formData.email || '', fullName: formData.fullName || '',
-        role: formData.role || 'provincial_officer', province: formData.province || null,
-        district: formData.district || null, isActive: true,
-        lastLogin: new Date().toISOString(), createdAt: new Date().toISOString(),
-      };
-      const updated = [...users, newUser];
-      setUsers(updated);
-      saveUsers(updated);
-      addToast('User created', 'success');
+  const handleSave = async (formData: Partial<User>) => {
+    try {
+      if (editingUser) {
+        const updated = users.map(u => u.id === editingUser.id ? { ...u, ...formData } as User : u);
+        setUsers(updated);
+        // TODO: Call API to update user when endpoint becomes available
+        addToast('User updated', 'success');
+      } else {
+        const newUser: User = {
+          id: `u${Date.now()}`, email: formData.email || '', fullName: formData.fullName || '',
+          role: formData.role || 'provincial_officer', province: formData.province || null,
+          district: formData.district || null, isActive: true,
+          lastLogin: new Date().toISOString(), createdAt: new Date().toISOString(),
+        };
+        const updated = [...users, newUser];
+        setUsers(updated);
+        // TODO: Call API to create user when endpoint becomes available
+        addToast('User created', 'success');
+      }
+      setShowDrawer(false);
+      setEditingUser(null);
+    } catch (err) {
+      addToast('Failed to save user', 'error');
     }
-    setShowDrawer(false);
-    setEditingUser(null);
   };
 
   return (
@@ -84,6 +114,56 @@ export default function UsersPage() {
         </button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-[300px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search by name, email or ID..."
+            className="w-full bg-[#f1f5f9] border border-[#e2e8f0] rounded-md pl-9 pr-4 py-2 text-sm focus:border-[#0d9488] focus:outline-none focus:ring-2 focus:ring-[#0d9488]/20"
+          />
+          {search && (
+            <button onClick={() => { setSearch(''); setPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94a3b8] hover:text-[#475569]">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        <select
+          value={roleFilter}
+          onChange={e => { setRoleFilter(e.target.value); setPage(1); }}
+          className="bg-[#f1f5f9] border border-[#e2e8f0] rounded-md px-3 py-2 text-sm focus:border-[#0d9488] focus:outline-none"
+        >
+          <option value="ALL">All Roles</option>
+          {Object.entries(ROLE_LABELS).map(([key, label]) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
+
+        <select
+          value={provinceFilter}
+          onChange={e => { setProvinceFilter(e.target.value); setPage(1); }}
+          className="bg-[#f1f5f9] border border-[#e2e8f0] rounded-md px-3 py-2 text-sm focus:border-[#0d9488] focus:outline-none"
+        >
+          <option value="ALL">All Provinces</option>
+          {['BULAWAYO', 'HARARE', 'MANICALAND', 'MASHONALAND CENTRAL', 'MASHONALAND EAST', 'MASHONALAND WEST', 'MASVINGO', 'MATABELELAND NORTH', 'MATABELELAND SOUTH', 'MIDLANDS'].map(prov => (
+            <option key={prov} value={prov}>{prov}</option>
+          ))}
+        </select>
+
+        <select
+          value={statusFilter}
+          onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+          className="bg-[#f1f5f9] border border-[#e2e8f0] rounded-md px-3 py-2 text-sm focus:border-[#0d9488] focus:outline-none"
+        >
+          <option value="ALL">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+
       <div className="bg-white rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -99,7 +179,7 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map(u => (
+              {paginatedUsers.map(u => (
                 <tr key={u.id} className="border-b border-[#e2e8f0] hover:bg-[rgba(13,148,136,0.03)] transition-colors group">
                   <td className="px-4 py-3">
                     <div className="relative group/tooltip">
@@ -179,6 +259,14 @@ export default function UsersPage() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="flex items-center justify-between px-5 py-3 border-t border-[#e2e8f0]">
+          <p className="text-xs text-[#475569]">Showing {filteredUsers.length === 0 ? 0 : (page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredUsers.length)} of {filteredUsers.length.toLocaleString()} users</p>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 text-[#475569] hover:bg-[#f1f5f9] rounded disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
+            <span className="text-xs text-[#475569] px-2">Page {page} of {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1.5 text-[#475569] hover:bg-[#f1f5f9] rounded disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
+          </div>
         </div>
       </div>
 

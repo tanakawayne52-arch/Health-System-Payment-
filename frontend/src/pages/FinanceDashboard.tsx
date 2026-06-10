@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-import { useBatches, usePaymentLists } from '../hooks/useData';
+import { useBatches, usePaymentLists, useVhwMasterList } from '../hooks/useData';
 import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
 import TransactionAnalytics from '../components/TransactionAnalytics';
 import EcopayTransactions from '../components/EcopayTransactions';
 import PieChartComponent from '../components/PieChartComponent';
+import Faux3DBarChart from '../components/Faux3DBarChart';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { getVhwMasterList } from '../data/seed';
+import { api } from '../lib/api';
 
 import { Clock, PlayCircle, CheckCircle, XCircle, Eye, Check, SkipForward, Download, Calendar, Globe, BarChart3 } from 'lucide-react';
 import { filterBatchesByUser, filterPaymentListsByUser } from '../utils/dataFilter';
@@ -23,9 +24,35 @@ export default function FinanceDashboard() {
   const { addToast } = useToast();
   const [allBatches] = useBatches();
   const [allLists] = usePaymentLists();
+  const [vhwMasterList] = useVhwMasterList();
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [selectedVhwDistrict, setSelectedVhwDistrict] = useState<string>('all');
-  const vhwMasterList = getVhwMasterList();
   
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await api.getFinanceStats();
+        if (res.success) {
+          setStats(res.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch finance stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading || !stats) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-12 h-12 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   // Filter data based on user's role and province
   const batches = filterBatchesByUser(allBatches, user);
   const lists = filterPaymentListsByUser(allLists, user);
@@ -42,31 +69,23 @@ export default function FinanceDashboard() {
     ? filteredVhwList 
     : filteredVhwList.filter(record => record.district === selectedVhwDistrict);
 
-  // VHW Stats
+  // VHW Stats (Using live data)
   const vhwStats = [
-    { label: 'Total VHWs', value: filteredVhwList.length },
+    { label: 'Total VHWs', value: stats.totalVhw || filteredVhwList.length },
     { label: 'VHW Districts', value: vhwDistricts.length },
     { label: 'Filtered VHWs', value: filteredVhwRecords.length },
   ];
 
-  // VHW Payment Categories
-  const vhwPaymentCategoryCounts = filteredVhwList.reduce((acc, record) => {
-    acc[record.paymentCategory] = (acc[record.paymentCategory] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // VHW Payment Categories (From API)
+  const vhwPaymentCategoryData = stats.vhwPaymentCategoryData.map((item: any, index: number) => ({
+    ...item,
+    color: COLORS[index % COLORS.length]
+  }));
 
-  const vhwPaymentCategoryData = Object.entries(vhwPaymentCategoryCounts)
-    .map(([category, count], index) => ({
-      name: category,
-      value: count,
-      color: COLORS[index % COLORS.length],
-    }))
-    .sort((a, b) => b.value - a.value);
-
-  const pendingBatches = batches.filter(b => b.status === 'pending').length;
-  const readyBatches = batches.filter(b => b.status === 'validated').length;
-  const completedBatches = batches.filter(b => b.status === 'completed').length;
-  const failedBatches = batches.filter(b => b.status === 'failed').length;
+  const pendingBatches = stats.pendingBatches;
+  const readyBatches = stats.recentBatches?.length || 0;
+  const completedBatches = stats.totalBatches - stats.pendingBatches;
+  const failedBatches = 0; // Can get from transactions if needed
   
   // Calculate percentage changes for stat cards
   const pendingChange = { value: '12%', positive: true };
@@ -74,17 +93,10 @@ export default function FinanceDashboard() {
   const completedChange = { value: '8%', positive: true };
   const failedChange = { value: '2%', positive: false };
 
-  const recentBatches = batches.slice(0, 8);
+  const recentBatches = stats.recentBatches || batches.slice(0, 8);
   const validationQueue = lists.filter(l => l.status === 'submitted').slice(0, 4);
 
-  const reconciliationData = [
-    { province: 'BULAWAYO', certified: 1842, paid: 1840, variance: 2 },
-    { province: 'HARARE', certified: 3201, paid: 3198, variance: 3 },
-    { province: 'MANICALAND', certified: 1765, paid: 1765, variance: 0 },
-    { province: 'MASHONALAND CENTRAL', certified: 1512, paid: 1510, variance: 2 },
-    { province: 'MASHONALAND EAST', certified: 1423, paid: 1423, variance: 0 },
-    { province: 'MASHONALAND WEST', certified: 1876, paid: 1873, variance: 3 },
-  ];
+  const reconciliationData = stats.reconciliationData || [];
 
   const totalCertified = reconciliationData.reduce((sum, r) => sum + r.certified, 0);
   const totalPaid = reconciliationData.reduce((sum, r) => sum + r.paid, 0);
@@ -183,92 +195,74 @@ export default function FinanceDashboard() {
         </CardContent>
       </Card>
 
-      {/* VHW Charts & Details Section */}
+      {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* VHW Payment Categories Pie Chart */}
-        <div className="bg-white rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-5 animate-fade-up" style={{ animationDelay: '500ms' }}>
-          <h3 className="text-base font-semibold text-[#1e293b] mb-4">VHW Payment Categories</h3>
+        <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-6 animate-fade-up" style={{ animationDelay: '500ms' }}>
+          <h3 className="text-base font-semibold text-[#1e293b] mb-6">Payment Distribution by Category</h3>
           <PieChartComponent
             data={vhwPaymentCategoryData}
-            height={250}
-            showLabel={true}
+            height={300}
             showLegend={true}
-            showTooltip={true}
-            legendPosition="right"
-            colors={COLORS}
-            outerRadius={80}
-            paddingAngle={2}
-            tooltipFormatter={(value) => value.toLocaleString()}
           />
         </div>
 
-        {/* VHW Payment Categories Details */}
-        <div className="bg-white rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-5 animate-fade-up" style={{ animationDelay: '600ms' }}>
-          <h3 className="text-base font-semibold text-[#1e293b] mb-4">Payment Categories Breakdown</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {Object.entries(vhwPaymentCategoryCounts).map(([category, count], index) => (
-              <div key={index} className="p-3 bg-gray-50 rounded-lg border">
-                <div className="text-sm font-semibold">{category}</div>
-                <div className="text-xl font-bold">{count}</div>
-              </div>
-            ))}
+        {/* Performance Bar Chart */}
+        <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-6 animate-fade-up" style={{ animationDelay: '600ms' }}>
+          <h3 className="text-base font-semibold text-[#1e293b] mb-6">Regional Disbursement Volume</h3>
+          <div className="h-[300px]">
+            <Faux3DBarChart data={reconciliationData} categoriesKey="province" series={[{key: 'certified', color: '#0d9488'}, {key: 'paid', color: '#3b82f6'}]} height={300} />
           </div>
         </div>
       </div>
 
-      {/* VHW Records Table */}
-      <Card className="animate-fade-up">
-        <CardHeader>
-          <CardTitle className="text-base">VHW Records - {selectedVhwDistrict === 'all' ? 'All Districts' : selectedVhwDistrict}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">Name</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">ID Number</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">District</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">Health Centre</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">Phone Number</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">Payment Category</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">Data Quality</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredVhwRecords.map((record, index) => (
-                  <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-sm">{record.firstName} {record.lastName}</td>
-                    <td className="px-4 py-3 text-sm">{record.idNumber}</td>
-                    <td className="px-4 py-3 text-sm">{record.district}</td>
-                    <td className="px-4 py-3 text-sm">{record.healthCentre}</td>
-                    <td className="px-4 py-3 text-sm">{record.phoneNumber}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        record.paymentCategory === 'Correct' ? 'bg-green-100 text-green-800' :
-                        record.paymentCategory.includes('Over') ? 'bg-yellow-100 text-yellow-800' :
-                        record.paymentCategory.includes('Under') ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {record.paymentCategory}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        record.dataQuality === 'Good' ? 'bg-green-100 text-green-800' :
-                        record.dataQuality === 'Fair' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {record.dataQuality}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gradient-to-br from-[#0d9488] to-[#0f766e] rounded-xl p-5 animate-fade-up" style={{ animationDelay: '700ms' }}>
+          <h3 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+            <Users className="w-4 h-4" /> VHW Management
+          </h3>
+          <p className="text-teal-50/70 text-xs mb-4 leading-relaxed">
+            Manage Village Health Workers with advanced filters, search, and exports.
+          </p>
+          <button 
+            onClick={() => navigate('/vhw-master-records')}
+            className="w-full px-4 py-2 bg-white text-[#0d9488] rounded-lg font-bold text-sm hover:bg-[#f0fdfa] transition-colors active:scale-[0.98]"
+          >
+            Go to VHW Records
+          </button>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-5 animate-fade-up" style={{ animationDelay: '750ms' }}>
+          <h3 className="text-base font-semibold text-slate-900 mb-3 flex items-center gap-2">
+            <PlayCircle className="w-4 h-4 text-teal-600" /> Payment Lists
+          </h3>
+          <p className="text-slate-500 text-xs mb-4 leading-relaxed">
+            Create, review and certify monthly payment lists for all active VHWs.
+          </p>
+          <button 
+            onClick={() => navigate('/payment-lists')}
+            className="w-full px-4 py-2 bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-bold text-sm hover:bg-slate-100 transition-colors active:scale-[0.98]"
+          >
+            Manage Lists
+          </button>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-5 animate-fade-up" style={{ animationDelay: '800ms' }}>
+          <h3 className="text-base font-semibold text-slate-900 mb-3 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-teal-600" /> Analytics & Reports
+          </h3>
+          <p className="text-slate-500 text-xs mb-4 leading-relaxed">
+            Access deep analytics on provincial distribution and payment reconciliation.
+          </p>
+          <button 
+            onClick={() => navigate('/reports')}
+            className="w-full px-4 py-2 bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-bold text-sm hover:bg-slate-100 transition-colors active:scale-[0.98]"
+          >
+            View Reports
+          </button>
+        </div>
+      </div>
 
       {/* Transaction Analytics */}
       <div className="animate-fade-up" style={{ animationDelay: '400ms' }}>

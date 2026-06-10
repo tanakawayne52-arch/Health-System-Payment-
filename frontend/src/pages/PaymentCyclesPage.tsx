@@ -1,37 +1,71 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/useToast';
-import { getCycles, getPaymentLists } from '@/data/seed';
+import { api } from '@/lib/api';
 import Badge from '@/components/Badge';
-import { Calendar, Plus, Lock, CheckCircle, FileText, ArrowRight } from 'lucide-react';
+import { Calendar, Plus, Lock, CheckCircle, FileText, ArrowRight, Loader2 } from 'lucide-react';
 import type { PaymentCycle, CycleStatus } from '@/types';
 
 export default function PaymentCyclesPage() {
   const { addToast } = useToast();
   const navigate = useNavigate();
-  const [cycles, setCycles] = useState<PaymentCycle[]>(getCycles());
+  const [cycles, setCycles] = useState<PaymentCycle[]>([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [relatedListsCount, setRelatedListsCount] = useState<Record<string, number>>({});
 
-  const handleStatusChange = (cycle: PaymentCycle, newStatus: CycleStatus) => {
-    const updated = cycles.map(c => c.id === cycle.id ? { ...c, status: newStatus } : c);
-    setCycles(updated);
-    addToast(`Cycle ${cycle.name} ${newStatus === 'locked' ? 'locked' : newStatus === 'closed' ? 'closed' : 'updated'}`, 'success');
+  const loadCycles = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.getCycles();
+      if (res.success && res.data) {
+        // map backend keys
+        const mapped = res.data.map((c: any) => ({
+          ...c,
+          periodStart: c.periodStart,
+          periodEnd: c.periodEnd,
+          createdBy: 'system' // Not strictly returned or needed here
+        })) as PaymentCycle[];
+        setCycles(mapped);
+      }
+    } catch (e) {
+      addToast('Failed to load cycles', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleCreate = (name: string, periodStart: string, periodEnd: string) => {
-    const newCycle: PaymentCycle = {
-      id: `c${Date.now()}`,
-      name,
-      periodStart,
-      periodEnd,
-      status: 'open',
-      createdBy: 'u4',
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [...cycles, newCycle];
-    setCycles(updated);
-    setShowCreate(false);
-    addToast(`Payment cycle ${name} created`, 'success');
+  useEffect(() => {
+    loadCycles();
+  }, []);
+
+  const handleStatusChange = async (cycle: PaymentCycle, newStatus: CycleStatus) => {
+    try {
+      const res = await api.updateCycleStatus(cycle.id, newStatus);
+      if (res.success) {
+        setCycles(cycles.map(c => c.id === cycle.id ? { ...c, status: newStatus } : c));
+        addToast(`Cycle ${cycle.name} ${newStatus === 'locked' ? 'locked' : newStatus === 'closed' ? 'closed' : 'updated'}`, 'success');
+      } else {
+        addToast(res.message || 'Failed to update status', 'error');
+      }
+    } catch (e) {
+      addToast('Error updating status', 'error');
+    }
+  };
+
+  const handleCreate = async (name: string, periodStart: string, periodEnd: string) => {
+    try {
+      const res = await api.createCycle({ name, periodStart, periodEnd });
+      if (res.success) {
+        setShowCreate(false);
+        addToast(`Payment cycle ${name} created`, 'success');
+        loadCycles();
+      } else {
+        addToast(res.message || 'Failed to create cycle', 'error');
+      }
+    } catch (e) {
+      addToast('Error creating cycle', 'error');
+    }
   };
 
   return (
@@ -49,7 +83,6 @@ export default function PaymentCyclesPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {cycles.map(cycle => {
-          const relatedLists = getPaymentLists().filter(l => l.cycleId === cycle.id);
           return (
             <div key={cycle.id} className="bg-white rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] transition-shadow group">
               <div className="flex items-center justify-between mb-3">
@@ -74,7 +107,7 @@ export default function PaymentCyclesPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1 text-xs text-[#475569]">
                     <FileText className="w-3 h-3" />
-                    <span>{relatedLists.length} payment list{relatedLists.length !== 1 ? 's' : ''}</span>
+                    <span>Payment lists</span>
                   </div>
                   <button onClick={() => navigate('/payment-lists')} className="text-xs text-[#0d9488] hover:underline flex items-center gap-1">
                     View <ArrowRight className="w-3 h-3" />

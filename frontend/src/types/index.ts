@@ -177,43 +177,126 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   national_admin: 'National Administrator',
 };
 
-export const ROLE_NAV_ITEMS: Record<UserRole, { label: string; icon: string; path: string }[]> = {
+export interface NavItem {
+  label: string;
+  icon: string;
+  path: string;
+  children?: NavItem[];
+}
+
+export const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
   provincial_officer: [
-    { label: 'Dashboard', icon: 'LayoutDashboard', path: '/' },
-    { label: 'VHW National Dashboard', icon: 'BarChart3', path: '/vhw-national-dashboard' },
-    { label: 'VHW Provincial Dashboard', icon: 'BarChart3', path: '/vhw-provincial-dashboard' },
-    { label: 'Payment Lists', icon: 'FileText', path: '/payment-lists' },
-    { label: 'Beneficiaries', icon: 'Users', path: '/beneficiaries' },
-    { label: 'Reports', icon: 'BarChart3', path: '/reports' },
+    { label: 'Overview', icon: 'LayoutDashboard', path: '/' },
+    { 
+      label: 'VHW Management', 
+      icon: 'Users', 
+      path: '/vhw',
+      children: [
+        { label: 'National Dashboard', icon: 'BarChart3', path: '/vhw-national-dashboard' },
+        { label: 'Provincial Dashboard', icon: 'BarChart3', path: '/vhw-provincial-dashboard' },
+        { label: 'VHW Records', icon: 'Users', path: '/beneficiaries' },
+      ]
+    },
+    { 
+      label: 'Payments', 
+      icon: 'FileText', 
+      path: '/payments',
+      children: [
+        { label: 'Payment Lists', icon: 'FileText', path: '/payment-lists' },
+        { label: 'Reports', icon: 'BarChart3', path: '/reports' },
+      ]
+    },
     { label: 'Audit Log', icon: 'ClipboardList', path: '/audit-trail' },
   ],
   hr_custodian: [
-    { label: 'Dashboard', icon: 'LayoutDashboard', path: '/' },
-    { label: 'VHW National Dashboard', icon: 'BarChart3', path: '/vhw-national-dashboard' },
-    { label: 'VHW Provincial Dashboard', icon: 'BarChart3', path: '/vhw-provincial-dashboard' },
-    { label: 'Beneficiaries', icon: 'Users', path: '/beneficiaries' },
-    { label: 'Payment Cycles', icon: 'Calendar', path: '/payment-cycles' },
-    { label: 'Reports', icon: 'BarChart3', path: '/reports' },
+    { label: 'Overview', icon: 'LayoutDashboard', path: '/' },
+    { 
+      label: 'VHW Management', 
+      icon: 'Users', 
+      path: '/vhw',
+      children: [
+        { label: 'National Dashboard', icon: 'BarChart3', path: '/vhw-national-dashboard' },
+        { label: 'Provincial Dashboard', icon: 'BarChart3', path: '/vhw-provincial-dashboard' },
+        { label: 'VHW Records', icon: 'Users', path: '/beneficiaries' },
+      ]
+    },
+    {
+      label: 'Facilities',
+      icon: 'Landmark',
+      path: '/facilities-mgmt',
+      children: [
+        { label: 'Physical Facilities', icon: 'Landmark', path: '/facilities' },
+        { label: 'Facility Types', icon: 'Settings', path: '/facility-types' },
+      ]
+    },
+    { 
+      label: 'System', 
+      icon: 'Settings', 
+      path: '/system',
+      children: [
+        { label: 'Payment Cycles', icon: 'Calendar', path: '/payment-cycles' },
+        { label: 'Reports', icon: 'BarChart3', path: '/reports' },
+      ]
+    },
     { label: 'Audit Log', icon: 'ClipboardList', path: '/audit-trail' },
   ],
   finance_officer: [
-    { label: 'Dashboard', icon: 'LayoutDashboard', path: '/' },
-    { label: 'VHW National Dashboard', icon: 'BarChart3', path: '/vhw-national-dashboard' },
-    { label: 'VHW Provincial Dashboard', icon: 'BarChart3', path: '/vhw-provincial-dashboard' },
-    { label: 'Payment Batches', icon: 'Wallet', path: '/payment-batches' },
-    { label: 'Payment Lists', icon: 'FileText', path: '/payment-lists' },
-    { label: 'Reconciliation', icon: 'GitCompare', path: '/reconciliation' },
+    { label: 'Overview', icon: 'LayoutDashboard', path: '/' },
+    { 
+      label: 'VHW Analytics', 
+      icon: 'BarChart3', 
+      path: '/vhw-analytics',
+      children: [
+        { label: 'National Dashboard', icon: 'BarChart3', path: '/vhw-national-dashboard' },
+        { label: 'Provincial Dashboard', icon: 'BarChart3', path: '/vhw-provincial-dashboard' },
+      ]
+    },
+    { 
+      label: 'Disbursements', 
+      icon: 'Wallet', 
+      path: '/disbursements',
+      children: [
+        { label: 'Payment Batches', icon: 'Wallet', path: '/payment-batches' },
+        { label: 'Payment Lists', icon: 'FileText', path: '/payment-lists' },
+        { label: 'Reconciliation', icon: 'GitCompare', path: '/reconciliation' },
+      ]
+    },
     { label: 'Reports', icon: 'BarChart3', path: '/reports' },
     { label: 'Audit Log', icon: 'ClipboardList', path: '/audit-trail' },
   ],
   national_admin: [
-    { label: 'Dashboard', icon: 'LayoutDashboard', path: '/' },
-    { label: 'VHW National Dashboard', icon: 'BarChart3', path: '/vhw-national-dashboard' },
-    { label: 'VHW Provincial Dashboard', icon: 'BarChart3', path: '/vhw-provincial-dashboard' },
-    { label: 'User Management', icon: 'UserCog', path: '/users' },
-    { label: 'Audit Trail', icon: 'ClipboardList', path: '/audit-trail' },
-    { label: 'Beneficiaries', icon: 'Users', path: '/beneficiaries' },
-    { label: 'Payment Batches', icon: 'Wallet', path: '/payment-batches' },
-    { label: 'Reports', icon: 'BarChart3', path: '/reports' },
+    { label: 'Overview', icon: 'LayoutDashboard', path: '/' },
+    { 
+      label: 'Dashboards', 
+      icon: 'LayoutDashboard', 
+      path: '/dashboards',
+      children: [
+        { label: 'National Dashboard', icon: 'BarChart3', path: '/vhw-national-dashboard' },
+        { label: 'Provincial Dashboard', icon: 'BarChart3', path: '/vhw-provincial-dashboard' },
+        { label: 'Workforce Summary', icon: 'ClipboardList', path: '/workforce-summary' },
+      ]
+    },
+    { 
+      label: 'System Management', 
+      icon: 'UserCog', 
+      path: '/admin',
+      children: [
+        { label: 'User Management', icon: 'UserCog', path: '/users' },
+        { label: 'Audit Trail', icon: 'ClipboardList', path: '/audit-trail' },
+      ]
+    },
+    { 
+      label: 'Operations', 
+      icon: 'Activity', 
+      path: '/ops',
+      children: [
+        { label: 'VHW Records', icon: 'Users', path: '/beneficiaries' },
+        { label: 'Physical Facilities', icon: 'Landmark', path: '/facilities' },
+        { label: 'Payment Batches', icon: 'Wallet', path: '/payment-batches' },
+        { label: 'Reports', icon: 'BarChart3', path: '/reports' },
+      ]
+    },
+    { label: 'Notifications', icon: 'Bell', path: '/notifications' },
+    { label: 'Settings', icon: 'Settings', path: '/settings' },
   ],
 };

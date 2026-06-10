@@ -46,6 +46,40 @@ interface TransactionAnalyticsProps {
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
+const CustomTooltip: React.FC<{ active?: boolean; payload?: any[]; label?: string }> = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white px-4 py-3 rounded-lg shadow-lg border border-slate-200">
+        <p className="font-medium text-slate-900 mb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex items-center gap-2 text-sm">
+            <div
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: entry.color }}
+            />
+            <span className="text-slate-600">{entry.name}:</span>
+            <span className="font-medium text-slate-900">
+              {entry.name.includes('Amount')
+                ? formatCurrency(entry.value)
+                : entry.value.toLocaleString()}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 export const TransactionAnalytics: React.FC<TransactionAnalyticsProps> = ({
   dateRange,
   province,
@@ -75,40 +109,6 @@ export const TransactionAnalytics: React.FC<TransactionAnalyticsProps> = ({
     void fetchAnalytics();
   }, [fetchAnalytics]);
 
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-const CustomTooltip: React.FC<{ active?: boolean; payload?: any[]; label?: string }> = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white px-4 py-3 rounded-lg shadow-lg border border-slate-200">
-        <p className="font-medium text-slate-900 mb-2">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2 text-sm">
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: entry.color }}
-            />
-            <span className="text-slate-600">{entry.name}:</span>
-            <span className="font-medium text-slate-900">
-              {entry.name.includes('Amount')
-                ? formatCurrency(entry.value)
-                : entry.value.toLocaleString()}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
 
   if (loading) {
     return (
@@ -319,13 +319,9 @@ const CustomTooltip: React.FC<{ active?: boolean; payload?: any[]; label?: strin
               color: COLORS[index % COLORS.length],
             }))}
             height={260}
-            innerRadius={50}
+            showLegend={true}
+            innerRadius={60}
             outerRadius={90}
-            showLabel={false}
-            showLegend={false}
-            showTooltip={true}
-            paddingAngle={2}
-            tooltipFormatter={(value) => formatCurrency(value as number)}
           />
         </div>
 

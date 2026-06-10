@@ -7,7 +7,7 @@ export default defineConfig({
     base: './',
     plugins: [inspectAttr(), react()],
     server: {
-        port: 3000,
+        port: 3001,
         allowedHosts: ['sb-1oa3dzurloym.vercel.run', 'localhost', '127.0.0.1'],
     },
     resolve: {

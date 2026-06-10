@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/useToast';
 import { useAuth } from '@/hooks/useAuth';
+import { useBeneficiaries, useAuditLogs, useVhwMasterList } from '@/hooks/useData';
+import type { Beneficiary } from '@/types';
 import StatCard from '@/components/StatCard';
 import Badge from '@/components/Badge';
 import PieChartComponent from '@/components/PieChartComponent';
+import Faux3DBarChart from '@/components/Faux3DBarChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getBeneficiaries, getAuditLogs, getVhwMasterList } from '@/data/seed';
 import { Users, UserCheck, AlertTriangle, Copy, UserPlus, Upload, Eye, BarChart3 } from 'lucide-react';
 
 const COLORS = ['#0d9488', '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658'];
@@ -17,13 +19,71 @@ export default function HRDashboard() {
   const { addToast } = useToast();
   const { user } = useAuth();
   const [selectedVhwDistrict, setSelectedVhwDistrict] = useState<string>('all');
-  const beneficiaries = getBeneficiaries();
-  const vhwMasterList = getVhwMasterList();
+  const [beneficiaries] = useBeneficiaries();
+  const [auditLogs] = useAuditLogs();
+  const [vhwMasterList] = useVhwMasterList();
   const province = user?.province || null;
   const filteredVhwList = province 
     ? vhwMasterList.filter(record => record.province === province)
     : vhwMasterList;
   const vhwDistricts = [...new Set(filteredVhwList.map(record => record.district))].filter(d => d);
+
+  const duplicateAlerts = useMemo(() => {
+    const nationalMap = new Map<string, Beneficiary[]>();
+    const ecocashMap = new Map<string, Beneficiary[]>();
+
+    beneficiaries.forEach((ben) => {
+      const national = ben.nationalId?.trim();
+      if (national) {
+        const list = nationalMap.get(national) ?? [];
+        list.push(ben);
+        nationalMap.set(national, list);
+      }
+      const ecocash = ben.ecocashNumber?.trim();
+      if (ecocash) {
+        const list = ecocashMap.get(ecocash) ?? [];
+        list.push(ben);
+        ecocashMap.set(ecocash, list);
+      }
+    });
+
+    const alerts: Array<{ id: string; nationalId: string; names: string; ecocash: string; provinces: string; type: string }> = [];
+
+    nationalMap.forEach((members, nationalId) => {
+      if (members.length > 1) {
+        alerts.push({
+          id: `nat-${nationalId}`,
+          nationalId,
+          names: Array.from(new Set(members.map(member => member.fullName))).join(' / '),
+          ecocash: Array.from(new Set(members.map(member => member.ecocashNumber || ''))).filter(Boolean).join(', '),
+          provinces: Array.from(new Set(members.map(member => member.province))).join(', '),
+          type: 'National ID duplicate',
+        });
+      }
+    });
+
+    ecocashMap.forEach((members, ecocashNumber) => {
+      if (members.length > 1) {
+        alerts.push({
+          id: `eco-${ecocashNumber}`,
+          nationalId: Array.from(new Set(members.map(member => member.nationalId || ''))).filter(Boolean).join(', '),
+          names: Array.from(new Set(members.map(member => member.fullName))).join(' / '),
+          ecocash: ecocashNumber,
+          provinces: Array.from(new Set(members.map(member => member.province))).join(', '),
+          type: 'Ecocash duplicate',
+        });
+      }
+    });
+
+    return alerts.slice(0, 5);
+  }, [beneficiaries]);
+
+  const provinceData = Object.entries(
+    filteredVhwList.reduce((acc, record) => {
+      acc[record.province] = (acc[record.province] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([province, count]) => ({ province, count }));
 
   // Filter VHW records by selected district
   const filteredVhwRecords = selectedVhwDistrict === 'all' 
@@ -63,7 +123,7 @@ export default function HRDashboard() {
   ];
 
   const recentAdditions = beneficiaries.slice(0, 5);
-  const recentAudit = getAuditLogs().filter(l => l.entityType === 'Beneficiary').slice(0, 5);
+  const recentAudit = auditLogs.filter(l => l.entityType === 'Beneficiary').slice(0, 5);
 
   const statusData = [
     { name: 'Active', value: activeCount, color: '#16a34a' },
@@ -107,35 +167,23 @@ export default function HRDashboard() {
         </CardContent>
       </Card>
 
-      {/* VHW Charts & Details Section */}
+      {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* VHW Payment Categories Pie Chart */}
-        <div className="bg-white rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-5 animate-fade-up">
-          <h3 className="text-base font-semibold text-[#1e293b] mb-4">VHW Payment Categories</h3>
+        {/* Status Distribution Pie Chart */}
+        <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-6 animate-fade-up" style={{ animationDelay: '400ms' }}>
+          <h3 className="text-base font-semibold text-[#1e293b] mb-6">Beneficiary Status Distribution</h3>
           <PieChartComponent
-            data={vhwPaymentCategoryData}
-            height={250}
-            showLabel={true}
+            data={statusData}
+            height={280}
             showLegend={true}
-            showTooltip={true}
-            legendPosition="right"
-            colors={COLORS}
-            outerRadius={80}
-            paddingAngle={2}
-            tooltipFormatter={(value) => value.toLocaleString()}
           />
         </div>
 
-        {/* VHW Payment Categories Details */}
-        <div className="bg-white rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-5 animate-fade-up">
-          <h3 className="text-base font-semibold text-[#1e293b] mb-4">Payment Categories Breakdown</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {Object.entries(vhwPaymentCategoryCounts).map(([category, count], index) => (
-              <div key={index} className="p-3 bg-gray-50 rounded-lg border">
-                <div className="text-sm font-semibold">{category}</div>
-                <div className="text-xl font-bold">{count}</div>
-              </div>
-            ))}
+        {/* Provincial Distribution Bar Chart */}
+        <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-6 animate-fade-up" style={{ animationDelay: '500ms' }}>
+          <h3 className="text-base font-semibold text-[#1e293b] mb-6">Regional VHW Distribution</h3>
+          <div className="h-[280px]">
+            <Faux3DBarChart data={provinceData} categoriesKey="province" series={[{key: 'count', color: '#0d9488'}]} height={280} />
           </div>
         </div>
       </div>
@@ -294,22 +342,10 @@ export default function HRDashboard() {
             <PieChartComponent
               data={statusData}
               height={220}
-              innerRadius={40}
+              showLegend={true}
+              innerRadius={50}
               outerRadius={70}
-              showLabel={false}
-              showLegend={false}
-              showTooltip={true}
-              paddingAngle={3}
-              tooltipFormatter={(value) => value.toLocaleString()}
             />
-            <div className="flex items-center justify-center gap-4 mt-4 flex-wrap">
-              {statusData.map(item => (
-                <div key={item.name} className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-xs text-[#475569]">{item.name}: <strong>{item.value.toLocaleString()}</strong></span>
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* Recent Audit Activity */}

@@ -169,14 +169,7 @@ const VhwProvincialDashboard: React.FC = () => {
             <PieChartComponent
               data={paymentCategoryData}
               height={350}
-              showLabel={true}
               showLegend={true}
-              showTooltip={true}
-              legendPosition="right"
-              colors={COLORS}
-              outerRadius={90}
-              paddingAngle={2}
-              tooltipFormatter={(value) => value.toLocaleString()}
             />
           </CardContent>
         </Card>
@@ -189,12 +182,38 @@ const VhwProvincialDashboard: React.FC = () => {
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={districtData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="district" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0' }} />
-                <Legend />
-                <Bar dataKey="count" fill="#0d9488" radius={[8, 8, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="district" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={80} 
+                  tick={{ fontSize: 10, fill: '#64748b' }} 
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis 
+                  tick={{ fontSize: 10, fill: '#64748b' }} 
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip 
+                  cursor={{ fill: '#f1f5f9' }}
+                  contentStyle={{ 
+                    borderRadius: '8px', 
+                    border: '1px solid #e2e8f0', 
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                    fontSize: '12px'
+                  }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                <Bar 
+                  dataKey="count" 
+                  name="VHWs" 
+                  fill="#0d9488" 
+                  radius={[4, 4, 0, 0]} 
+                  barSize={32}
+                />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

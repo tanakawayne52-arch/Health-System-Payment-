@@ -20,7 +20,7 @@ npm run dev
 ```bash
 cd backend/php-api
 # Start the PHP development server
-php -S 127.0.0.1:8000 index.php
+php -S 127.0.0.1:3000 router.php
 ```
 
 3. **Database Setup**
@@ -53,7 +53,7 @@ php -S 127.0.0.1:8000 index.php
 
 ### API Communication
 - All frontend requests should go through `frontend/src/lib/api.ts`.
-- The `API_BASE_URL` is configured to `http://127.0.0.1:8000/api`.
+- The `API_BASE_URL` is configured to `http://127.0.0.1:3000/api`.
 
 ### UI Components
 - Use Tailwind CSS for all styling.

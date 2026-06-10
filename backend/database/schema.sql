@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS payment_lists (
     reviewed_by VARCHAR(50),
     reviewed_at DATETIME,
     certification_notes TEXT,
+    evidence_notes TEXT,
     beneficiary_count INT NOT NULL DEFAULT 0,
     total_amount DECIMAL(15, 2) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL,
@@ -146,6 +147,8 @@ CREATE TABLE IF NOT EXISTS exception_requests (
     requested_by VARCHAR(50),
     requester_name VARCHAR(255) NOT NULL,
     reason TEXT NOT NULL,
+    entity_type VARCHAR(50),
+    entity_id VARCHAR(50),
     status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
     reviewed_by VARCHAR(50),
     reviewed_at DATETIME,
@@ -238,4 +241,27 @@ CREATE TABLE IF NOT EXISTS role_permissions (
     update_permission BOOLEAN NOT NULL DEFAULT FALSE,
     delete_permission BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME NOT NULL DEFAULT NOW()
+) ENGINE=InnoDB;
+
+-- Table 14: Refresh Tokens
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token VARCHAR(255) NOT NULL UNIQUE,
+    user_id VARCHAR(50) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Table 15: Notifications
+CREATE TABLE IF NOT EXISTS notifications (
+    id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL,
+    type ENUM('info', 'success', 'warning', 'error') NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    link VARCHAR(255),
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

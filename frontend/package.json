@@ -2,10 +2,12 @@
   "name": "my-app",
   "private": true,
   "version": "0.0.0",
+  "packageManager": "npm@10.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit --pretty false",
     "lint": "eslint .",
     "preview": "vite preview"
   },

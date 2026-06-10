@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { User, UserRole } from '@/types';
 import { api, User as ApiUser } from '@/lib/api';
-import { authenticateUser } from '@/data/users';
+
 
 interface AuthContextType {
   user: User | null;
@@ -34,12 +34,7 @@ function mapApiUserToType(apiUser: ApiUser): User {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
-    try {
-      const stored = localStorage.getItem(AUTH_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
+    return null;
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -56,10 +51,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem(AUTH_KEY, JSON.stringify(mappedUser));
           } else {
             setUser(null);
+            api.clearTokens();
             localStorage.removeItem(AUTH_KEY);
           }
         } catch {
           setUser(null);
+          api.clearTokens();
           localStorage.removeItem(AUTH_KEY);
         }
       }
@@ -115,6 +112,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return false;
     return allowedRoles.includes(user.role);
   }, [user]);
+
+  // Idle session timeout (15 minutes)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let timeoutId: NodeJS.Timeout;
+    const IDLE_TIMEOUT = 15 * 60 * 1000; // 15 mins
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        logout();
+        alert('Your session has expired due to inactivity. Please log in again.');
+      }, IDLE_TIMEOUT);
+    };
+
+    const events = ['mousemove', 'keydown', 'scroll', 'click'];
+    events.forEach(e => window.addEventListener(e, resetTimer));
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+    };
+  }, [isAuthenticated, logout]);
 
   const isNationalLevel = useMemo(() => {
     if (!user) return false;

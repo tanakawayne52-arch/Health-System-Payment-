@@ -85,7 +85,9 @@ export function useWebSocket(userId?: string) {
           reconnectAttemptsRef.current++;
           reconnectTimeoutRef.current = setTimeout(() => {
             console.log(`[WS] Attempting to reconnect (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`);
-            connect();
+            // Use window.dispatchEvent or a simple trigger to call connect again
+            // or just call the function directly since it's now a named function in the closure
+            void connect();
           }, 3000 * reconnectAttemptsRef.current); // Backoff: 3s, 6s, 9s, etc.
         } else if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
           setConnectionError('Unable to connect to live data server');

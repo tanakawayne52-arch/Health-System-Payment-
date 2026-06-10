@@ -1,168 +1,137 @@
-import React from 'react';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { Pie, Doughnut } from 'react-chartjs-2';
-import ChartDataLabels from 'chartjs-plugin-datalabels';
-
-ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
-
-const DEFAULT_COLORS = [
-  '#0d9488',
-  '#0088FE',
-  '#00C49F',
-  '#FFBB28',
-  '#FF8042',
-  '#8884d8',
-  '#82ca9d',
-  '#ffc658',
-  '#ff7c7c',
-  '#a4de6c',
-  '#d084d0',
-  '#76d6da',
-];
-
-interface ChartDataPoint {
-  name: string;
-  value: number;
-  color?: string;
-}
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface PieChartComponentProps {
-  data: ChartDataPoint[];
-  title?: string;
-  innerRadius?: number;
-  outerRadius?: number;
-  height?: number;
-  showLabel?: boolean;
+  data: { name: string; value: number; color: string }[];
+  totalLabel?: string;
+  height?: number | string;
   showLegend?: boolean;
-  showTooltip?: boolean;
-  legendPosition?: 'top' | 'right' | 'bottom' | 'left';
-  colors?: string[];
-  labelFormatter?: (name: string, percent: number) => string;
-  tooltipFormatter?: (value: number, name: string) => React.ReactNode;
-  responsive?: boolean;
+  innerRadius?: string | number;
+  outerRadius?: string | number;
   paddingAngle?: number;
-  startAngle?: number;
-  endAngle?: number;
-  className?: string;
+  showLabel?: boolean;
+  showTooltip?: boolean;
+  labelFormatter?: (name: string, percent: number) => string;
+  tooltipFormatter?: (value: number) => string;
 }
 
-const PieChartComponent: React.FC<PieChartComponentProps> = ({
-  data,
-  title,
-  innerRadius,
-  outerRadius = 100,
-  height = 350,
-  showLabel = true,
-  showLegend = true,
+const PieChartComponent: React.FC<PieChartComponentProps> = ({ 
+  data, 
+  totalLabel = 'Total', 
+  height = '100%',
+  showLegend = false,
+  innerRadius = '70%',
+  outerRadius = '90%',
+  paddingAngle = 5,
+  showLabel = false,
   showTooltip = true,
-  legendPosition = 'bottom',
-  colors = DEFAULT_COLORS,
-  tooltipFormatter = (value) => value.toLocaleString(),
-  startAngle = 90,
-  endAngle = -270,
-  className = '',
+  labelFormatter,
+  tooltipFormatter,
 }) => {
-  if (!data || data.length === 0) {
-    return (
-      <div className={`flex items-center justify-center ${className}`} style={{ height: `${height}px` }}>
-        <p className="text-slate-500 text-sm">No data available</p>
-      </div>
-    );
-  }
-
-  const total = data.reduce((sum, item) => sum + item.value, 0);
-  const labels = data.map(d => d.name);
-  const values = data.map(d => d.value);
-  const backgroundColors = data.map((d, i) => d.color || colors[i % colors.length]);
-
-  const chartType = innerRadius ? 'doughnut' : 'pie';
-  const ChartComponent = chartType === 'doughnut' ? Doughnut : Pie;
-
-  const chartData = {
-    labels,
-    datasets: [
-      {
-        data: values,
-        backgroundColor: backgroundColors,
-        borderWidth: 0,
-        cutout: innerRadius ? `${(innerRadius / outerRadius) * 100}%` : undefined,
-      },
-    ],
-  };
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    rotation: startAngle,
-    circumference: endAngle - startAngle,
-    layout: {
-      padding: 12,
-    },
-    plugins: {
-      legend: {
-        display: showLegend,
-        position: legendPosition,
-        labels: {
-          usePointStyle: true,
-          pointStyle: 'circle',
-          generateLabels: (chart: any) => {
-            const data = chart.data;
-            if (data.labels.length && data.datasets.length) {
-              const total = data.datasets[0].data.reduce((a: number, b: number) => a + b, 0);
-              return data.labels.map((label: string, i: number) => {
-                const value = data.datasets[0].data[i];
-                const percent = total > 0 ? ((value / total) * 100) : 0;
-                return {
-                  text: `${label}: ${value} (${Math.round(percent)}%)`,
-                  fillStyle: data.datasets[0].backgroundColor[i],
-                  hidden: !chart.getDataVisibility(i),
-                  index: i,
-                  pointStyle: 'circle',
-                };
-              });
-            }
-            return [];
-          },
-        },
-      },
-      tooltip: {
-        enabled: showTooltip,
-        callbacks: {
-          label: (context: any) => {
-            const label = context.label || '';
-            const value = context.parsed;
-            const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-            return `${label}: ${tooltipFormatter(value, label)} (${percent}%)`;
-          },
-        },
-      },
-      datalabels: {
-        color: '#fff',
-        formatter: (value: number, ctx: any) => {
-          if (!showLabel) return '';
-          const totalVal = ctx.chart.data.datasets[0].data.reduce((a: number, b: number) => a + b, 0);
-          const pct = Math.round((value / totalVal) * 100);
-          return pct < 5 ? '' : `${pct}%`;
-        },
-        anchor: 'center' as const,
-        align: 'center' as const,
-        clamp: true,
-        clip: true,
-        font: {
-          weight: 'bold' as const,
-          size: 13,
-        },
-      },
-    },
-  };
+  const total = data.reduce((acc, curr) => acc + curr.value, 0);
+  
+  // Split data for two-column legend
+  const half = Math.ceil(data.length / 2);
+  const leftLegend = data.slice(0, half);
+  const rightLegend = data.slice(half);
 
   return (
-    <div className={`w-full ${className}`}>
-      {title && <h3 className="text-lg font-semibold text-slate-900 mb-4">{title}</h3>}
-
-      <div style={{ height: `${height}px` }}>
-        <ChartComponent data={chartData} options={chartOptions} />
+    <div className="flex flex-col items-center w-full" style={{ height }}>
+      {/* Chart with Total in Middle */}
+      <div className="relative w-full flex-1 min-h-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={innerRadius}
+              outerRadius={outerRadius}
+              paddingAngle={paddingAngle}
+              dataKey="value"
+              stroke="none"
+              label={showLabel ? ({ name, percent }: any) => {
+                const formatted = labelFormatter ? labelFormatter(name, Math.round(percent)) : `${name} (${Math.round(percent)}%)`;
+                return formatted;
+              } : false}
+            >
+              {data.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={entry.color} 
+                  className="hover:opacity-80 transition-opacity cursor-pointer"
+                />
+              ))}
+            </Pie>
+            {showTooltip && (
+              <Tooltip
+                formatter={(value: any) => {
+                  const numericValue = Number(value);
+                  return tooltipFormatter ? tooltipFormatter(numericValue) : numericValue.toLocaleString();
+                }}
+                contentStyle={{ 
+                  borderRadius: '12px', 
+                  border: 'none', 
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                  padding: '8px 12px',
+                  fontWeight: 'bold',
+                  fontSize: '11px'
+                }}
+              />
+            )}
+          </PieChart>
+        </ResponsiveContainer>
+        
+        {/* Central Label */}
+        {innerRadius !== 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">
+              {totalLabel}
+            </span>
+            <span className="text-xl font-black text-slate-900 leading-none">
+              {total.toLocaleString()}
+            </span>
+          </div>
+        )}
       </div>
+
+      {/* Bottom Two-Column Legend */}
+      {showLegend && (
+        <div className="w-full mt-6 grid grid-cols-2 gap-x-8 gap-y-2">
+          {/* Left Column Items */}
+          <div className="flex flex-col gap-2">
+            {leftLegend.map((item, i) => (
+              <div key={i} className="flex items-center gap-2 group/item cursor-default">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-bold text-slate-700 truncate leading-tight group-hover/item:text-slate-900 transition-colors">
+                    {item.name}
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-400 leading-none">
+                    {item.value.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Right Column Items */}
+          <div className="flex flex-col gap-2">
+            {rightLegend.map((item, i) => (
+              <div key={i} className="flex items-center gap-2 group/item cursor-default">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-bold text-slate-700 truncate leading-tight group-hover/item:text-slate-900 transition-colors">
+                    {item.name}
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-400 leading-none">
+                    {item.value.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

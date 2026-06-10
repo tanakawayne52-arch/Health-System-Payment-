@@ -1,0 +1,11 @@
+const fs = require('fs');
+const ts = require('./node_modules/typescript');
+const src = fs.readFileSync('src/pages/ReportsPage.tsx','utf8');
+const start = src.indexOf("{activeTab === 'summary' && (");
+const cardsStart = src.indexOf('<div className="grid grid-cols-1 sm:grid-cols-4 gap-5">', start);
+const provinceChartStart = src.indexOf('<div className="bg-white rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-5">', cardsStart + 1);
+const duplicateRiskStart = src.indexOf('<div className="bg-white rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-5">', provinceChartStart + 1);
+const snippet = src.slice(provinceChartStart, duplicateRiskStart);
+const wrapped = `const Test = () => (<>${snippet}</>);`;
+const sf = ts.createSourceFile('tmp.tsx', wrapped, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+console.log('length', wrapped.length); console.log('diagnostics', sf.parseDiagnostics.map(d => ({line: wrapped.slice(0, d.start).split('\n').length, msg: ts.flattenDiagnosticMessageText(d.messageText, '\n'), text: wrapped.slice(d.start-20,d.start+20)})));

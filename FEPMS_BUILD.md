@@ -99,7 +99,7 @@ pnpm install
 ```bash
 pnpm dev
 ```
-Runs on http://localhost:3000
+Runs on http://localhost:3001
 
 ### Build
 ```bash

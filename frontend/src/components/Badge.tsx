@@ -36,10 +36,11 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function Badge({ status, children }: BadgeProps) {
-  const style = statusStyles[status.toLowerCase()] || statusStyles['draft'];
+  const normalizedStatus = typeof status === 'string' ? status.toLowerCase() : 'unknown';
+  const style = statusStyles[normalizedStatus] || statusStyles['draft'];
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide border ${style}`}>
-      {children || status}
+      {children || status || 'Unknown'}
     </span>
   );
 }
