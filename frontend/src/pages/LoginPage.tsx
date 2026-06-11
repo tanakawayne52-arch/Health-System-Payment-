@@ -15,7 +15,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      navigate('/overview/');
     }
   }, [isAuthenticated, navigate]);
 
@@ -27,7 +27,7 @@ export default function LoginPage() {
     try {
       const result = await login(email, password);
       if (result.success) {
-        navigate('/');
+        navigate('/overview/');
       } else {
         setError(result.message || 'Invalid credentials. Please try again.');
       }
@@ -44,7 +44,14 @@ export default function LoginPage() {
       {/* Left Hero Section */}
       <div className="hidden lg:flex flex-1 relative bg-[#0f172a] text-white p-12 flex-col justify-center items-center overflow-hidden">
         {/* Flag Stripe (Left) */}
-        <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-b from-[#006400] via-[#FFD700] to-[#D40000]" aria-hidden />
+        <div 
+          className="absolute inset-y-0 left-0 w-2.5" 
+          style={{
+            background: 'linear-gradient(180deg, #006400 0%, #FFD700 20%, #D40000 40%, #000000 60%, #D40000 75%, #FFD700 90%, #006400 100%)',
+            boxShadow: '5px 0 15px rgba(0, 100, 0, 0.2), 5px 0 30px rgba(255, 215, 0, 0.15), 5px 0 45px rgba(212, 0, 0, 0.1)'
+          }} 
+          aria-hidden 
+        />
         
         {/* Blurred accent circles */}
         <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-[#0d9488]/10 blur-3xl" aria-hidden />
@@ -85,7 +92,13 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-6 bg-white lg:bg-gray-50">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xl lg:shadow-2xl overflow-hidden border border-gray-100">
           {/* Multicolor flag stripe */}
-          <div className="h-2 w-full bg-gradient-to-r from-[#006400] via-[#FFD700] to-[#D40000]" style={{background: 'linear-gradient(90deg, #006400 0%, #FFD700 20%, #D40000 40%, #000000 60%, #D40000 75%, #FFD700 90%, #006400 100%)'}} />
+          <div 
+            className="h-2 w-full" 
+            style={{
+              background: 'linear-gradient(90deg, #006400 0%, #FFD700 20%, #D40000 40%, #000000 60%, #D40000 75%, #FFD700 90%, #006400 100%)',
+              boxShadow: '0 5px 15px rgba(0, 100, 0, 0.2), 0 5px 30px rgba(255, 215, 0, 0.15), 0 5px 45px rgba(212, 0, 0, 0.1)'
+            }} 
+          />
           
           <div className="p-8 lg:p-10">
             {/* Mobile Logo */}
@@ -187,7 +200,14 @@ export default function LoginPage() {
       </div>
 
       {/* Flag Stripe (Right) */}
-      <div className="absolute inset-y-0 right-0 w-2.5 bg-gradient-to-b from-[#006400] via-[#FFD700] to-[#D40000]" aria-hidden />
+      <div 
+        className="absolute inset-y-0 right-0 w-2.5" 
+        style={{
+          background: 'linear-gradient(180deg, #006400 0%, #FFD700 20%, #D40000 40%, #000000 60%, #D40000 75%, #FFD700 90%, #006400 100%)',
+          boxShadow: '-5px 0 15px rgba(0, 100, 0, 0.2), -5px 0 30px rgba(255, 215, 0, 0.15), -5px 0 45px rgba(212, 0, 0, 0.1)'
+        }} 
+        aria-hidden="true" 
+      />
     </div>
   );
 }

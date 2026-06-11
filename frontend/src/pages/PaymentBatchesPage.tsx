@@ -4,7 +4,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
 import Badge from '@/components/Badge';
-import { PROVINCES } from '@/types';
 import { Search, Plus, Eye, CheckCircle, PlayCircle, RefreshCw, Trash2, X, ChevronLeft, ChevronRight, ExternalLink, Info, Calendar, Users, DollarSign, FileText } from 'lucide-react';
 import type { PaymentBatch } from '@/types';
 
@@ -25,6 +24,7 @@ export default function PaymentBatchesPage() {
   const [relatedLists, setRelatedLists] = useState<any[]>([]);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [validatingId, setValidatingId] = useState<string | null>(null);
+  const [provinces, setProvinces] = useState<string[]>([]);
   const [executingId, setExecutingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const pageSize = 15;
@@ -43,6 +43,14 @@ export default function PaymentBatchesPage() {
   };
 
   useEffect(() => { void fetchBatches(); }, [search, provinceFilter, statusFilter, page]);
+
+  useEffect(() => {
+    api.getProvinces().then(res => {
+      if (res.success && Array.isArray(res.data)) {
+        setProvinces(res.data);
+      }
+    });
+  }, []);
 
   // Fetch related payment lists when viewing a batch
   useEffect(() => {
@@ -159,7 +167,7 @@ export default function PaymentBatchesPage() {
         <select value={provinceFilter} onChange={e => { setProvinceFilter(e.target.value); setPage(1); }}
           className="bg-[#f1f5f9] border border-[#e2e8f0] rounded-md px-3 py-2 text-sm focus:border-[#0d9488] focus:outline-none">
           <option value="ALL">All Provinces</option>
-          {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+          {provinces.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
         <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
           className="bg-[#f1f5f9] border border-[#e2e8f0] rounded-md px-3 py-2 text-sm focus:border-[#0d9488] focus:outline-none">
@@ -278,6 +286,7 @@ export default function PaymentBatchesPage() {
       {/* Create Batch Modal */}
       {showCreate && (
         <CreateBatchModal
+          provinces={provinces}
           onClose={() => setShowCreate(false)}
           onCreate={async () => {
             setShowCreate(false);
@@ -435,11 +444,11 @@ export default function PaymentBatchesPage() {
   );
 }
 
-function CreateBatchModal({ onClose, onCreate }: { onClose: () => void; onCreate: () => Promise<void> }) {
+function CreateBatchModal({ provinces, onClose, onCreate }: { provinces: string[]; onClose: () => void; onCreate: () => Promise<void> }) {
   const { user } = useAuth();
   const { addToast } = useToast();
   const [name, setName] = useState('');
-  const [province, setProvince] = useState('BULAWAYO');
+  const [province, setProvince] = useState(provinces.length > 0 ? provinces[0] : 'BULAWAYO');
   const [selectedLists, setSelectedLists] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [availableLists, setAvailableLists] = useState<any[]>([]);
@@ -537,7 +546,7 @@ function CreateBatchModal({ onClose, onCreate }: { onClose: () => void; onCreate
             <label className="block text-xs font-medium text-[#475569] mb-1.5 uppercase tracking-wide">Province</label>
             <select value={province} onChange={e => { setProvince(e.target.value); setSelectedLists([]); }}
               className="w-full bg-[#f1f5f9] border border-[#e2e8f0] rounded-md px-3 py-2 text-sm focus:border-[#0d9488] focus:outline-none">
-              {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+              {provinces.map((p: string) => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
           <div>

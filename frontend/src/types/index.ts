@@ -186,7 +186,7 @@ export interface NavItem {
 
 export const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
   provincial_officer: [
-    { label: 'Overview', icon: 'LayoutDashboard', path: '/' },
+    { label: 'Overview', icon: 'LayoutDashboard', path: '/overview/' },
     { 
       label: 'VHW Management', 
       icon: 'Users', 
@@ -194,6 +194,7 @@ export const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
       children: [
         { label: 'National Dashboard', icon: 'BarChart3', path: '/vhw-national-dashboard' },
         { label: 'Provincial Dashboard', icon: 'BarChart3', path: '/vhw-provincial-dashboard' },
+        { label: 'District Dashboard', icon: 'BarChart3', path: '/vhw-district-dashboard' },
         { label: 'VHW Records', icon: 'Users', path: '/beneficiaries' },
       ]
     },
@@ -209,7 +210,7 @@ export const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Audit Log', icon: 'ClipboardList', path: '/audit-trail' },
   ],
   hr_custodian: [
-    { label: 'Overview', icon: 'LayoutDashboard', path: '/' },
+    { label: 'Overview', icon: 'LayoutDashboard', path: '/overview/' },
     { 
       label: 'VHW Management', 
       icon: 'Users', 
@@ -217,6 +218,7 @@ export const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
       children: [
         { label: 'National Dashboard', icon: 'BarChart3', path: '/vhw-national-dashboard' },
         { label: 'Provincial Dashboard', icon: 'BarChart3', path: '/vhw-provincial-dashboard' },
+        { label: 'District Dashboard', icon: 'BarChart3', path: '/vhw-district-dashboard' },
         { label: 'VHW Records', icon: 'Users', path: '/beneficiaries' },
       ]
     },
@@ -241,7 +243,7 @@ export const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Audit Log', icon: 'ClipboardList', path: '/audit-trail' },
   ],
   finance_officer: [
-    { label: 'Overview', icon: 'LayoutDashboard', path: '/' },
+    { label: 'Overview', icon: 'LayoutDashboard', path: '/overview/' },
     { 
       label: 'VHW Analytics', 
       icon: 'BarChart3', 
@@ -249,6 +251,7 @@ export const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
       children: [
         { label: 'National Dashboard', icon: 'BarChart3', path: '/vhw-national-dashboard' },
         { label: 'Provincial Dashboard', icon: 'BarChart3', path: '/vhw-provincial-dashboard' },
+        { label: 'District Dashboard', icon: 'BarChart3', path: '/vhw-district-dashboard' },
       ]
     },
     { 
@@ -265,7 +268,7 @@ export const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Audit Log', icon: 'ClipboardList', path: '/audit-trail' },
   ],
   national_admin: [
-    { label: 'Overview', icon: 'LayoutDashboard', path: '/' },
+    { label: 'Overview', icon: 'LayoutDashboard', path: '/overview/' },
     { 
       label: 'Dashboards', 
       icon: 'LayoutDashboard', 
@@ -273,6 +276,7 @@ export const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
       children: [
         { label: 'National Dashboard', icon: 'BarChart3', path: '/vhw-national-dashboard' },
         { label: 'Provincial Dashboard', icon: 'BarChart3', path: '/vhw-provincial-dashboard' },
+        { label: 'District Dashboard', icon: 'BarChart3', path: '/vhw-district-dashboard' },
         { label: 'Workforce Summary', icon: 'ClipboardList', path: '/workforce-summary' },
       ]
     },

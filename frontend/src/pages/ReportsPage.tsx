@@ -1,7 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, Beneficiary } from '@/lib/api';
-import { PROVINCES } from '@/types';
 import Faux3DBarChart from '@/components/Faux3DBarChart';
 import PieChartComponent from '@/components/PieChartComponent';
 import EcopayTransactions from '@/components/EcopayTransactions';
@@ -32,6 +31,7 @@ export default function ReportsPage() {
 
   const [activeTab, setActiveTab] = useState<'summary' | 'reconciliation' | 'beneficiary' | 'ecopay'>('summary');
   const [loading, setLoading] = useState(true);
+  const [provinces, setProvinces] = useState<string[]>([]);
   const [beneficiarySummary, setBeneficiarySummary] = useState<{ paid: number; failed: number; excluded: number } | null>(null);
   const [reconciliationRows, setReconciliationRows] = useState<ReconciliationRow[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
@@ -43,32 +43,36 @@ export default function ReportsPage() {
       setLoading(true);
 
       try {
-        const [reconRes, benSummaryRes, beneficiariesRes] = await Promise.all([
+        const [reconRes, benSummaryRes, beneficiariesRes, provincesRes] = await Promise.all([
           api.getReconciliationData({}),
           api.getBeneficiarySummary(),
           api.getBeneficiaries({ limit: 1000 }),
+          api.getProvinces(),
         ]);
+        
+        if (!cancelled) {
+          const provincesData = provincesRes ? (Array.isArray(provincesRes) ? provincesRes : provincesRes.data || []) : [];
+          setProvinces(provincesData);
 
-        if (cancelled) return;
+          if (reconRes.success && Array.isArray((reconRes as any).data)) {
+            setReconciliationRows((reconRes as any).data as ReconciliationRow[]);
+          } else {
+            setReconciliationRows([]);
+          }
 
-        if (reconRes.success && Array.isArray((reconRes as any).data)) {
-          setReconciliationRows((reconRes as any).data as ReconciliationRow[]);
-        } else {
-          setReconciliationRows([]);
-        }
+          if (benSummaryRes.success && (benSummaryRes as any).data) {
+            setBeneficiarySummary((benSummaryRes as any).data);
+          } else {
+            setBeneficiarySummary(null);
+          }
 
-        if (benSummaryRes.success && (benSummaryRes as any).data) {
-          setBeneficiarySummary((benSummaryRes as any).data);
-        } else {
-          setBeneficiarySummary(null);
-        }
-
-        if (beneficiariesRes.success && (beneficiariesRes as any).data) {
-          const raw = (beneficiariesRes as any).data;
-          const list = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
-          setBeneficiaries(list as Beneficiary[]);
-        } else {
-          setBeneficiaries([]);
+          if (beneficiariesRes.success && (beneficiariesRes as any).data) {
+            const raw = (beneficiariesRes as any).data;
+            const list = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+            setBeneficiaries(list as Beneficiary[]);
+          } else {
+            setBeneficiaries([]);
+          }
         }
       } catch (error: any) {
         if (!cancelled) {
@@ -103,7 +107,7 @@ export default function ReportsPage() {
 
   const reconciliationProvinceData = useMemo(
     () =>
-      PROVINCES.map((province) => {
+      provinces.map((province) => {
         const row = reconciliationRows.find((r) => r.province === province);
         return {
           province,
@@ -113,16 +117,16 @@ export default function ReportsPage() {
           variance: row?.variance ?? 0,
         };
       }),
-    [reconciliationRows],
+    [reconciliationRows, provinces],
   );
 
   const beneficiariesByProvince = useMemo(
     () =>
-      PROVINCES.map((province) => ({
+      provinces.map((province) => ({
         province,
         count: beneficiaries.filter((ben) => ben.province === province).length,
       })),
-    [beneficiaries],
+    [beneficiaries, provinces],
   );
 
   const beneficiariesByDistrict = useMemo(() => {
@@ -182,14 +186,14 @@ export default function ReportsPage() {
 
   const duplicateProvinceData = useMemo(
     () =>
-      PROVINCES.map((province) => ({
+      provinces.map((province) => ({
         label: province,
         duplicates: duplicateGroups.reduce(
           (sum, group) => sum + group.members.filter((member) => member.province === province).length,
           0,
         ),
       })),
-    [duplicateGroups],
+    [duplicateGroups, provinces],
   );
 
   const totalCrossProvinceDuplicates = useMemo(

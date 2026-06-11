@@ -115,13 +115,6 @@ export default function HRDashboard() {
   const inactiveCount = beneficiaries.filter(b => b.status === 'inactive').length;
   const exitedCount = beneficiaries.filter(b => b.status === 'exited').length;
 
-  // Simulate duplicates
-  const duplicateAlerts = [
-    { id: 'd1', nationalId: '45-1234567 M89', names: 'Mary Moyo / Maria Moyo', ecocash: '0773123456', provinces: 'BULAWAYO, HARARE', type: 'Same ID Different Phone' },
-    { id: 'd2', nationalId: '63-7654321 K45', names: 'John Sibanda', ecocash: '0775987654', provinces: 'MASVINGO, MIDLANDS', type: 'Same Phone Different ID' },
-    { id: 'd3', nationalId: '72-9876543 L12', names: 'Grace Ndlovu / Grace Ndhlovu', ecocash: '0774567890', provinces: 'MANICALAND', type: 'Same Name Different ID' },
-  ];
-
   const recentAdditions = beneficiaries.slice(0, 5);
   const recentAudit = auditLogs.filter(l => l.entityType === 'Beneficiary').slice(0, 5);
 
@@ -218,8 +211,8 @@ export default function HRDashboard() {
                     <td className="px-4 py-3 text-sm">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                         record.paymentCategory === 'Correct' ? 'bg-green-100 text-green-800' :
-                        record.paymentCategory.includes('Over') ? 'bg-yellow-100 text-yellow-800' :
-                        record.paymentCategory.includes('Under') ? 'bg-red-100 text-red-800' :
+                        (record.paymentCategory || '').includes('Over') ? 'bg-yellow-100 text-yellow-800' :
+                        (record.paymentCategory || '').includes('Under') ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {record.paymentCategory}

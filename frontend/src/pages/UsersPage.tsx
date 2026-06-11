@@ -1,12 +1,17 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useToast } from '@/hooks/useToast';
+import { api } from '@/lib/api';
 import Badge from '@/components/Badge';
 import { ROLE_LABELS } from '@/types';
 import type { User } from '@/types';
-import { UserPlus, Pencil, Eye, X, Trash2, Copy, Mail, Shield, Calendar, MapPin, Info, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { UserPlus, Pencil, Eye, X, Trash2, Copy, Mail, Shield, Calendar, MapPin, Info, Search } from 'lucide-react';
+import { getUsers, saveUsers, getAuditLogs, saveAuditLogs } from '@/data/seed';
+import { useAuth } from '@/hooks/useAuth';
+import PaginationControls from '@/components/PaginationControls';
 
 export default function UsersPage() {
   const { addToast } = useToast();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [showDrawer, setShowDrawer] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -14,21 +19,56 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [provinceFilter, setProvinceFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [provinces, setProvinces] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 15;
 
-  // Fetch users from API on mount
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        // TODO: Implement getUsers endpoint in API when available
-        setUsers([]);
-      } catch (err) {
-        addToast('Failed to load users', 'error');
-      }
+  // Audit log function
+  const addAuditLog = (action: string, entityType: string, entityId: string, oldValues: any, newValues: any, reason?: string) => {
+    const logs = getAuditLogs();
+    const newLog = {
+      id: `a${Date.now()}`,
+      userId: currentUser?.id || 'system',
+      userName: currentUser?.fullName || 'System',
+      userRole: currentUser?.role || 'national_admin',
+      action,
+      entityType,
+      entityId,
+      oldValues,
+      newValues,
+      reason: reason || null,
+      ipAddress: '127.0.0.1',
+      timestamp: new Date().toISOString(),
     };
-    void fetchUsers();
-  }, [addToast]);
+    logs.push(newLog);
+    saveAuditLogs(logs);
+  };
+
+  // Load users from storage on mount
+  useEffect(() => {
+    const loadedUsers = getUsers();
+    if (loadedUsers.length === 0) {
+      // Seed users if not present
+      const defaultUsers: User[] = [
+        // Provincial Officers
+        { id: 'po1', email: 'harare@mohcc.gov.zw', fullName: 'Tendai Moyo', role: 'provincial_officer', province: 'HARARE', district: null, isActive: true, lastLogin: new Date().toISOString(), createdAt: '2026-05-25T08:00:00Z' },
+        { id: 'po2', email: 'bulawayo@mohcc.gov.zw', fullName: 'Grace Sibanda', role: 'provincial_officer', province: 'BULAWAYO', district: null, isActive: true, lastLogin: new Date().toISOString(), createdAt: '2026-05-26T08:00:00Z' },
+        { id: 'po3', email: 'manicaland@mohcc.gov.zw', fullName: 'Joseph Mutema', role: 'provincial_officer', province: 'MANICALAND', district: null, isActive: true, lastLogin: new Date().toISOString(), createdAt: '2026-05-27T08:00:00Z' },
+        // HR Custodians
+        { id: 'hr1', email: 'hr.harare@mohcc.gov.zw', fullName: 'Memory Mupote', role: 'hr_custodian', province: 'HARARE', district: null, isActive: true, lastLogin: new Date().toISOString(), createdAt: '2026-05-25T09:00:00Z' },
+        // Finance Officers
+        { id: 'fin1', email: 'finance.harare@mohcc.gov.zw', fullName: 'Peter Ndlovu', role: 'finance_officer', province: 'HARARE', district: null, isActive: true, lastLogin: new Date().toISOString(), createdAt: '2026-05-25T10:00:00Z' },
+        // National Admin
+        { id: 'admin', email: 'admin@mohcc.gov.zw', fullName: 'Sarah Ncube', role: 'national_admin', province: null, district: null, isActive: true, lastLogin: new Date().toISOString(), createdAt: '2026-05-20T08:00:00Z' },
+      ];
+      setUsers(defaultUsers);
+      saveUsers(defaultUsers);
+    } else {
+      setUsers(loadedUsers);
+    }
+    // Set provinces for filter
+    setProvinces(['BULAWAYO', 'HARARE', 'MANICALAND', 'MASHONALAND CENTRAL', 'MASHONALAND EAST', 'MASHONALAND WEST', 'MASVINGO', 'MATABELELAND NORTH', 'MATABELELAND SOUTH', 'MIDLANDS']);
+  }, []);
 
   const filteredUsers = useMemo(() => {
     let data = [...users];
@@ -51,9 +91,12 @@ export default function UsersPage() {
 
   const handleToggleActive = async (u: User) => {
     try {
-      const updated = users.map(user => user.id === u.id ? { ...user, isActive: !user.isActive } : user);
-      setUsers(updated);
-      // TODO: Call API to update user status when endpoint becomes available
+      const oldValues = { isActive: u.isActive };
+      const updatedUsers = users.map(user => user.id === u.id ? { ...user, isActive: !user.isActive } : user);
+      setUsers(updatedUsers);
+      saveUsers(updatedUsers);
+      const newValues = { isActive: !u.isActive };
+      addAuditLog('EDIT', 'User', u.id, oldValues, newValues, `User ${u.isActive ? 'deactivated' : 'activated'}`);
       addToast(`User ${u.isActive ? 'deactivated' : 'activated'}`, 'success');
     } catch (err) {
       addToast('Failed to update user', 'error');
@@ -63,9 +106,11 @@ export default function UsersPage() {
   const handleDelete = async (u: User) => {
     if (window.confirm(`Are you sure you want to delete user ${u.fullName}?`)) {
       try {
-        const updated = users.filter(user => user.id !== u.id);
-        setUsers(updated);
-        // TODO: Call API to delete user when endpoint becomes available
+        const oldValues = { ...u };
+        const updatedUsers = users.filter(user => user.id !== u.id);
+        setUsers(updatedUsers);
+        saveUsers(updatedUsers);
+        addAuditLog('DELETE', 'User', u.id, oldValues, null, 'User deleted');
         addToast(`User ${u.fullName} deleted`, 'success');
       } catch (err) {
         addToast('Failed to delete user', 'error');
@@ -76,20 +121,28 @@ export default function UsersPage() {
   const handleSave = async (formData: Partial<User>) => {
     try {
       if (editingUser) {
-        const updated = users.map(u => u.id === editingUser.id ? { ...u, ...formData } as User : u);
-        setUsers(updated);
-        // TODO: Call API to update user when endpoint becomes available
+        const oldValues = { ...editingUser };
+        const updatedUsers = users.map(user => user.id === editingUser.id ? { ...user, ...formData } as User : user);
+        setUsers(updatedUsers);
+        saveUsers(updatedUsers);
+        addAuditLog('EDIT', 'User', editingUser.id, oldValues, formData, 'User details updated');
         addToast('User updated', 'success');
       } else {
         const newUser: User = {
-          id: `u${Date.now()}`, email: formData.email || '', fullName: formData.fullName || '',
-          role: formData.role || 'provincial_officer', province: formData.province || null,
-          district: formData.district || null, isActive: true,
-          lastLogin: new Date().toISOString(), createdAt: new Date().toISOString(),
+          id: `u${Date.now()}`, 
+          email: formData.email || '', 
+          fullName: formData.fullName || '',
+          role: formData.role || 'provincial_officer', 
+          province: formData.province || null,
+          district: null, 
+          isActive: true,
+          lastLogin: new Date().toISOString(), 
+          createdAt: new Date().toISOString(),
         };
-        const updated = [...users, newUser];
-        setUsers(updated);
-        // TODO: Call API to create user when endpoint becomes available
+        const updatedUsers = [...users, newUser];
+        setUsers(updatedUsers);
+        saveUsers(updatedUsers);
+        addAuditLog('ADD', 'User', newUser.id, null, { ...newUser }, 'New user created');
         addToast('User created', 'success');
       }
       setShowDrawer(false);
@@ -148,7 +201,7 @@ export default function UsersPage() {
           className="bg-[#f1f5f9] border border-[#e2e8f0] rounded-md px-3 py-2 text-sm focus:border-[#0d9488] focus:outline-none"
         >
           <option value="ALL">All Provinces</option>
-          {['BULAWAYO', 'HARARE', 'MANICALAND', 'MASHONALAND CENTRAL', 'MASHONALAND EAST', 'MASHONALAND WEST', 'MASVINGO', 'MATABELELAND NORTH', 'MATABELELAND SOUTH', 'MIDLANDS'].map(prov => (
+          {provinces.map(prov => (
             <option key={prov} value={prov}>{prov}</option>
           ))}
         </select>
@@ -260,14 +313,16 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-between px-5 py-3 border-t border-[#e2e8f0]">
-          <p className="text-xs text-[#475569]">Showing {filteredUsers.length === 0 ? 0 : (page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredUsers.length)} of {filteredUsers.length.toLocaleString()} users</p>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 text-[#475569] hover:bg-[#f1f5f9] rounded disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
-            <span className="text-xs text-[#475569] px-2">Page {page} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1.5 text-[#475569] hover:bg-[#f1f5f9] rounded disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
-          </div>
-        </div>
+        <PaginationControls
+          pagination={{
+            page,
+            total: filteredUsers.length,
+            totalPages,
+            limit: pageSize
+          }}
+          onPageChange={setPage}
+          className="mt-4"
+        />
       </div>
 
       {showDrawer && (

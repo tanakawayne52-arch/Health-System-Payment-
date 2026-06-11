@@ -7,7 +7,6 @@ import Badge from '@/components/Badge';
 import PaginationControls from '@/components/PaginationControls';
 import CertificationModal, { type PaymentListDetail } from '@/components/CertificationModal';
 import { PAGE_SIZE, defaultPagination, type PaginationMeta } from '@/constants/pagination';
-import { PROVINCES } from '@/types';
 import type { PaymentList } from '@/types';
 import {
   Search, Plus, Eye, Pencil, Send, Trash2, ShieldCheck,
@@ -62,6 +61,7 @@ export default function PaymentListsPage() {
   const [evidenceTarget, setEvidenceTarget] = useState<PaymentList | null>(null);
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [evidenceNotes, setEvidenceNotes] = useState('');
+  const [provinces, setProvinces] = useState<string[]>([]);
 
   const fetchLists = useCallback(async () => {
     setIsLoading(true);
@@ -94,6 +94,12 @@ export default function PaymentListsPage() {
     api.getCycles().then(res => {
       if (res.success && Array.isArray(res.data)) {
         setCycles(res.data.map(c => ({ id: c.id, name: c.name })));
+      }
+    });
+
+    api.getProvinces().then(res => {
+      if (res.success && Array.isArray(res.data)) {
+        setProvinces(res.data);
       }
     });
   }, []);
@@ -264,7 +270,7 @@ export default function PaymentListsPage() {
           <select value={provinceFilter} onChange={e => { setProvinceFilter(e.target.value); setPage(1); }}
             className="bg-[#f1f5f9] border border-[#e2e8f0] rounded-md px-3 py-2 text-sm">
             <option value="ALL">All Provinces</option>
-            {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+            {provinces.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         )}
         <button type="button" onClick={() => void fetchLists()}

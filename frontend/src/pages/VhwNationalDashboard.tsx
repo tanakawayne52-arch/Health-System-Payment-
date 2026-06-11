@@ -3,10 +3,12 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useVhwMasterList } from '../hooks/useData';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { canonicalizeProvince, canonicalizeOrRaw } from '@/utils/province';
 import PieChartComponent from '../components/PieChartComponent';
 import PivotTables from '../components/PivotTables';
 import Faux3DBarChart from '../components/Faux3DBarChart';
-import { Activity, GitCompare, BarChart3, Users, MapPin, CheckCircle, Info, Phone, Search, X, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
+import PaginationControls from '../components/PaginationControls';
+import { Activity, GitCompare, BarChart3, Users, MapPin, CheckCircle, Info, Phone, Search, X, Copy } from 'lucide-react';
 import Badge from '../components/Badge';
 
 const COLORS = ['#2dd4bf', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b'];
@@ -26,16 +28,18 @@ const VhwNationalDashboard: React.FC = () => {
 
   // Calculate some basic stats from the master list
   const totalRecords = vhwMasterList.length;
-  const provinces = [...new Set(vhwMasterList.map(record => record.province))].filter(p => p);
-  
+  // derive canonical provinces present in the data
+  const provinces = Array.from(new Set(vhwMasterList.map(r => canonicalizeProvince(r.province)).filter(Boolean))) as string[];
+
   // Filter VHW records by selected province and search query
   const filteredVhwRecords = vhwMasterList.filter(record => {
-    const matchesProvince = selectedProvince === 'all' || record.province === selectedProvince;
+    const recordProv = canonicalizeProvince(record.province);
+    const matchesProvince = selectedProvince === 'all' || (recordProv && recordProv === selectedProvince);
     const searchStr = searchQuery.toLowerCase();
     const matchesSearch = !searchQuery || 
-      `${record.firstName} ${record.lastName}`.toLowerCase().includes(searchStr) ||
-      record.idNumber.toLowerCase().includes(searchStr) ||
-      record.phoneNumber.toLowerCase().includes(searchStr);
+      `${record.firstName || ''} ${record.lastName || ''}`.toLowerCase().includes(searchStr) ||
+      (record.idNumber || '').toLowerCase().includes(searchStr) ||
+      (record.phoneNumber || '').toLowerCase().includes(searchStr);
     return matchesProvince && matchesSearch;
   });
 
@@ -63,10 +67,11 @@ const VhwNationalDashboard: React.FC = () => {
     }))
     .sort((a, b) => b.value - a.value);
 
-  // Count per province
+  // Count per canonical province
   const provinceMetrics = vhwMasterList.reduce((acc, record) => {
-    if (record.province) {
-      acc[record.province] = (acc[record.province] || 0) + 1;
+    const cp = canonicalizeProvince(record.province);
+    if (cp) {
+      acc[cp] = (acc[cp] || 0) + 1;
     }
     return acc;
   }, {} as Record<string, number>);
@@ -204,12 +209,12 @@ const VhwNationalDashboard: React.FC = () => {
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
-                          {record.firstName[0]}{record.lastName[0]}
+                          {(record.firstName || '')[0]}{(record.lastName || '')[0]}
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-900 leading-none">{record.firstName} {record.lastName}</p>
                           <p className="text-xs text-slate-500 font-medium mt-1.5 flex items-center gap-1.5">
-                            <Phone className="w-3 h-3" /> {record.phoneNumber}
+                            <Phone className="w-3 h-3" /> {record.phoneNumber || 'N/A'}
                           </p>
                         </div>
                       </div>
@@ -217,30 +222,32 @@ const VhwNationalDashboard: React.FC = () => {
                     <td className="px-6 py-5">
                       <div className="flex flex-col gap-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">{record.idNumber}</span>
-                          <button 
-                            onClick={() => { navigator.clipboard.writeText(record.idNumber); }}
-                            className="text-slate-400 hover:text-teal-500 transition-colors"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </button>
+                          <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">{record.idNumber || 'N/A'}</span>
+                          {record.idNumber && (
+                            <button 
+                              onClick={() => { navigator.clipboard.writeText(record.idNumber); }}
+                              className="text-slate-400 hover:text-teal-500 transition-colors"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{record.healthCentre}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{record.healthCentre || 'N/A'}</p>
                       </div>
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex flex-col gap-1">
-                        <p className="text-xs font-bold text-slate-700">{record.district}</p>
-                        <p className="text-[10px] text-slate-500 font-medium">{record.province}</p>
+                        <p className="text-xs font-bold text-slate-700">{record.district || 'N/A'}</p>
+                        <p className="text-[10px] text-slate-500 font-medium">{canonicalizeOrRaw(record.province) || 'N/A'}</p>
                       </div>
                     </td>
                     <td className="px-6 py-5">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                         record.paymentCategory === 'Correct' ? 'bg-green-100 text-green-700' :
-                        record.paymentCategory.includes('Over') ? 'bg-amber-100 text-amber-700' :
+                        (record.paymentCategory || '').includes('Over') ? 'bg-amber-100 text-amber-700' :
                         'bg-rose-100 text-rose-700'
                       }`}>
-                        {record.paymentCategory}
+                        {record.paymentCategory || 'N/A'}
                       </span>
                     </td>
                     <td className="px-6 py-5 text-right">
@@ -255,63 +262,23 @@ const VhwNationalDashboard: React.FC = () => {
           </div>
 
           {/* Pagination Footer */}
-          <div className="px-6 py-5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
-            <p className="text-xs text-slate-500 font-semibold">
-              Showing <span className="text-slate-900">{((currentPage - 1) * pageSize) + 1}</span> to <span className="text-slate-900">{Math.min(currentPage * pageSize, filteredVhwRecords.length)}</span> of <span className="text-slate-900">{filteredVhwRecords.length}</span> records
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(currentPage - 1)}
-                className="p-2 text-slate-400 hover:text-slate-900 disabled:opacity-30 transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <div className="flex items-center gap-1">
-                {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                  const p = i + 1;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setCurrentPage(p)}
-                      className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
-                        currentPage === p 
-                          ? 'bg-teal-400 text-slate-900 shadow-md shadow-teal-500/20' 
-                          : 'text-slate-500 hover:bg-slate-200'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(currentPage + 1)}
-                className="p-2 text-slate-400 hover:text-slate-900 disabled:opacity-30 transition-colors"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+          <PaginationControls
+            pagination={{
+              page: currentPage,
+              total: filteredVhwRecords.length,
+              totalPages,
+              limit: pageSize
+            }}
+            onPageChange={setCurrentPage}
+            className="mt-4"
+          />
         </div>
       </div>
 
-      {/* Workforce Summary Redirect */}
-      <div className="card-professional p-6 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-lg font-bold text-slate-900 tracking-tight">Workforce Master Summary</h3>
-          <p className="text-sm text-slate-500 font-medium mt-1">Access detailed national pivot tables and analytical summaries</p>
-        </div>
-        <button 
-          onClick={() => navigate('/workforce-summary')}
-          className="px-6 py-3 bg-teal-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-teal-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
-        >
-          View Full Summary <ChevronRight className="w-4 h-4" />
-        </button>
+      {/* National Pivot Tables */}
+      <div className="mt-8">
+        <PivotTables data={vhwMasterList} />
       </div>
-
-      {/* Filter and Table Section */}
     </div>
   );
 };

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useVhwMasterList } from '@/hooks/useData';
+import { api } from '@/lib/api';
 import { 
   Search, 
   X, 
@@ -26,11 +27,7 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 
-const PROVINCES = [
-  'BULAWAYO', 'HARARE', 'MANICALAND', 'MASHONALAND CENTRAL', 
-  'MASHONALAND EAST', 'MASHONALAND WEST', 'MASVINGO', 
-  'MATABELELAND NORTH', 'MATABELELAND SOUTH', 'MIDLANDS'
-];
+
 
 const VhwMasterRecordsPage: React.FC = () => {
   const [vhwMasterList] = useVhwMasterList();
@@ -47,6 +44,7 @@ const VhwMasterRecordsPage: React.FC = () => {
   const [provinceFilter, setProvinceFilter] = useState(user?.province && user.role !== 'national_admin' ? user.province : 'all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [qualityFilter, setQualityFilter] = useState('all');
+  const [provinceOptions, setProvinceOptions] = useState<string[]>([]);
   
   // Pagination state
   const [page, setPage] = useState(1);
@@ -68,6 +66,14 @@ const VhwMasterRecordsPage: React.FC = () => {
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    api.getProvinces().then(res => {
+      if (res.success && Array.isArray(res.data)) {
+        setProvinceOptions(res.data);
+      }
+    });
+  }, []);
 
   const exportCSV = () => {
     const headers = ['Name', 'ID Number', 'Province', 'District', 'Health Centre', 'Phone', 'Payment', 'Quality'];
@@ -143,7 +149,7 @@ const VhwMasterRecordsPage: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-slate-200 shadow-xl">
                   <SelectItem value="all">All Provinces</SelectItem>
-                  {PROVINCES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  {provinceOptions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -236,7 +242,7 @@ const VhwMasterRecordsPage: React.FC = () => {
                     <div className="flex flex-col gap-2">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${
                         record.paymentCategory === 'Correct' ? 'bg-green-100 text-green-700' :
-                        record.paymentCategory.includes('Over') ? 'bg-amber-100 text-amber-700' :
+                        (record.paymentCategory || '').includes('Over') ? 'bg-amber-100 text-amber-700' :
                         'bg-rose-100 text-rose-700'
                       }`}>
                         {record.paymentCategory}

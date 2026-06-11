@@ -3,8 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import PieChartComponent from '../components/PieChartComponent';
 import PivotTables from '../components/PivotTables';
+import PaginationControls from '../components/PaginationControls';
 import { useAuth } from '../hooks/useAuth';
 import { useVhwMasterList } from '../hooks/useData';
+import { canonicalizeProvince } from '@/utils/province';
 import {
   BarChart,
   Bar,
@@ -21,14 +23,18 @@ const COLORS = ['#0d9488', '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'
 const VhwProvincialDashboard: React.FC = () => {
   const { user } = useAuth();
   const [vhwMasterList] = useVhwMasterList();
-  const provinces = [...new Set(vhwMasterList.map(record => record.province))].filter(p => p);
-  
+  // derive canonical provinces (only the 10 known provinces)
+  const provinces = Array.from(new Set(vhwMasterList.map(r => canonicalizeProvince(r.province)).filter(Boolean))) as string[];
+
   // Check if user has province restriction
   const isProvinceRestricted = user?.province !== null;
+  const userProv = canonicalizeProvince(user?.province) || '';
   const [selectedProvince, setSelectedProvince] = useState<string>(
-    isProvinceRestricted && user?.province ? user.province : (provinces[0] || '')
+    isProvinceRestricted && userProv ? userProv : (provinces[0] || '')
   );
   const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   
   // Update selected province if user changes or user province changes
   useEffect(() => {
@@ -38,13 +44,19 @@ const VhwProvincialDashboard: React.FC = () => {
     }
   }, [user, isProvinceRestricted]);
 
-  const provinceRecords = vhwMasterList.filter(record => record.province === selectedProvince);
+  const provinceRecords = vhwMasterList.filter(record => {
+    const cp = canonicalizeProvince(record.province);
+    return cp && cp === selectedProvince;
+  });
   const districts = [...new Set(provinceRecords.map(record => record.district))].filter(d => d);
 
   // Filter VHW records by selected district
   const filteredVhwRecords = selectedDistrict === 'all' 
     ? provinceRecords 
-    : provinceRecords.filter(record => record.district === selectedDistrict);
+    : provinceRecords.filter(record => record.district && record.district === selectedDistrict);
+  
+  const paginatedRecords = filteredVhwRecords.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalPages = Math.ceil(filteredVhwRecords.length / pageSize);
 
   // Calculate stats for selected province
   const provinceStats = [
@@ -257,21 +269,21 @@ const VhwProvincialDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredVhwRecords.map((record, index) => (
+                {paginatedRecords.map((record, index) => (
                   <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-sm">{record.firstName} {record.lastName}</td>
-                    <td className="px-4 py-3 text-sm">{record.idNumber}</td>
-                    <td className="px-4 py-3 text-sm">{record.district}</td>
-                    <td className="px-4 py-3 text-sm">{record.healthCentre}</td>
-                    <td className="px-4 py-3 text-sm">{record.phoneNumber}</td>
+                    <td className="px-4 py-3 text-sm">{record.idNumber || 'N/A'}</td>
+                    <td className="px-4 py-3 text-sm">{record.district || 'N/A'}</td>
+                    <td className="px-4 py-3 text-sm">{record.healthCentre || 'N/A'}</td>
+                    <td className="px-4 py-3 text-sm">{record.phoneNumber || 'N/A'}</td>
                     <td className="px-4 py-3 text-sm">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                         record.paymentCategory === 'Correct' ? 'bg-green-100 text-green-800' :
-                        record.paymentCategory.includes('Over') ? 'bg-yellow-100 text-yellow-800' :
-                        record.paymentCategory.includes('Under') ? 'bg-red-100 text-red-800' :
+                        (record.paymentCategory || '').includes('Over') ? 'bg-yellow-100 text-yellow-800' :
+                        (record.paymentCategory || '').includes('Under') ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {record.paymentCategory}
+                        {record.paymentCategory || 'N/A'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm">
@@ -280,7 +292,7 @@ const VhwProvincialDashboard: React.FC = () => {
                         record.dataQuality === 'Fair' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'
                       }`}>
-                        {record.dataQuality}
+                        {record.dataQuality || 'N/A'}
                       </span>
                     </td>
                   </tr>
@@ -288,12 +300,24 @@ const VhwProvincialDashboard: React.FC = () => {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          <PaginationControls
+            pagination={{
+              page: currentPage,
+              total: filteredVhwRecords.length,
+              totalPages,
+              limit: pageSize
+            }}
+            onPageChange={setCurrentPage}
+            className="mt-4"
+          />
         </CardContent>
       </Card>
 
       {/* Pivot Tables */}
       <div className="mt-8">
-        <PivotTables />
+        <PivotTables data={vhwMasterList} />
       </div>
     </div>
   );

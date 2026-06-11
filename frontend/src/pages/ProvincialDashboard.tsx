@@ -183,8 +183,8 @@ export default function ProvincialDashboard() {
                     <td className="px-4 py-3 text-sm">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                         record.paymentCategory === 'Correct' ? 'bg-green-100 text-green-800' :
-                        record.paymentCategory.includes('Over') ? 'bg-yellow-100 text-yellow-800' :
-                        record.paymentCategory.includes('Under') ? 'bg-red-100 text-red-800' :
+                        (record.paymentCategory || '').includes('Over') ? 'bg-yellow-100 text-yellow-800' :
+                        (record.paymentCategory || '').includes('Under') ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {record.paymentCategory}

@@ -58,37 +58,56 @@ function generateEcoCash(): string {
 
 export function getStorage<T>(key: string): T[] {
   try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : [];
+    const ls = localStorage.getItem(key);
+    if (ls) return JSON.parse(ls);
+    // Fallback to sessionStorage if localStorage does not have the key
+    const ss = sessionStorage.getItem(key);
+    if (ss) return JSON.parse(ss);
+    return [];
   } catch {
     return [];
   }
 }
 
 export function setStorage<T>(key: string, data: T[]): void {
+  const payload = JSON.stringify(data);
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    localStorage.setItem(key, payload);
     dispatchStorageUpdate(key);
-  } catch (error) {
-    if (error instanceof Error && error.name === 'QuotaExceededError') {
-      console.error(`[v0] localStorage quota exceeded for key: ${key}. Clearing old data and retrying...`);
-      // Clear oldest data and retry with subset
-      localStorage.clear();
-      try {
-        const truncatedData = data.slice(0, Math.floor(data.length * 0.5));
-        localStorage.setItem(key, JSON.stringify(truncatedData));
-        dispatchStorageUpdate(key);
-      } catch (retryError) {
-        console.error('[v0] Failed to store data even after clearing:', retryError);
+    return;
+  } catch (error: any) {
+    // Try writing to sessionStorage as a fallback
+    try {
+      sessionStorage.setItem(key, payload);
+      console.warn(`[v0] localStorage write failed for ${key}; saved to sessionStorage instead.`);
+      dispatchStorageUpdate(key);
+      return;
+    } catch (ssError) {
+      // If sessionStorage also fails, attempt progressive truncation in localStorage
+      if (error instanceof Error && error.name === 'QuotaExceededError') {
+        console.error(`[v0] localStorage quota exceeded for key: ${key}. Attempting truncation...`);
+        const truncationLevels = [0.5, 0.25, 0.1];
+        for (const level of truncationLevels) {
+          try {
+            const truncated = JSON.stringify(data.slice(0, Math.max(1, Math.floor(data.length * level))));
+            localStorage.setItem(key, truncated);
+            console.warn(`[v0] Stored truncated data (${Math.floor(level * 100)}%) for key: ${key}`);
+            dispatchStorageUpdate(key);
+            return;
+          } catch (tErr) {
+            // continue to next truncation level
+          }
+        }
+        console.error('[v0] Failed to store truncated data in localStorage. Giving up.');
+      } else {
+        console.error('[v0] Storage error:', error);
       }
-    } else {
-      console.error('[v0] Storage error:', error);
     }
   }
 }
 
 export function isSeeded(): boolean {
-  return localStorage.getItem(STORAGE_KEYS.SEEDED) === 'true';
+  return localStorage.getItem(STORAGE_KEYS.SEEDED) === 'true' || sessionStorage.getItem(STORAGE_KEYS.SEEDED) === 'true';
 }
 
 export function clearAllData(): void {
@@ -96,8 +115,9 @@ export function clearAllData(): void {
 }
 
 export function seedAllData(): void {
-  // Uncomment the line below to clear seed data and re-seed
-  // localStorage.removeItem(STORAGE_KEYS.SEEDED);
+  // Clear seed data to ensure we're using the latest data from the master CSV
+  localStorage.removeItem(STORAGE_KEYS.SEEDED);
+  localStorage.removeItem(STORAGE_KEYS.VHW_MASTER_LIST);
   if (isSeeded()) return;
 
   const vhwMasterList = vhwData as VhwRecord[];
@@ -326,16 +346,7 @@ export function seedAllData(): void {
   }
 
   const auditLogs: AuditLog[] = [
-    { id: 'a1', userId: 'u2', userName: 'Grace Sibanda', userRole: 'hr_custodian', action: 'ADD', entityType: 'Beneficiary', entityId: 'b1', oldValues: null, newValues: { fullName: 'Mary Moyo' }, reason: null, ipAddress: '192.168.1.10', timestamp: '2026-05-28T09:15:00Z' },
-    { id: 'a2', userId: 'u2', userName: 'Grace Sibanda', userRole: 'hr_custodian', action: 'EDIT', entityType: 'Beneficiary', entityId: 'b2', oldValues: { status: 'active' }, newValues: { status: 'exited', exitReason: 'Deceased' }, reason: null, ipAddress: '192.168.1.10', timestamp: '2026-05-28T10:30:00Z' },
-    { id: 'a3', userId: 'u1', userName: 'Tendai Moyo', userRole: 'provincial_officer', action: 'SUBMIT', entityType: 'PaymentList', entityId: 'l1', oldValues: { status: 'draft' }, newValues: { status: 'submitted' }, reason: null, ipAddress: '192.168.1.20', timestamp: '2026-05-29T08:00:00Z' },
-    { id: 'a4', userId: 'u4', userName: 'Sarah Ncube', userRole: 'national_admin', action: 'CERTIFY', entityType: 'PaymentList', entityId: 'l1', oldValues: { status: 'submitted' }, newValues: { status: 'certified' }, reason: null, ipAddress: '192.168.1.40', timestamp: '2026-05-29T14:00:00Z' },
-    { id: 'a5', userId: 'u3', userName: 'Peter Ndlovu', userRole: 'finance_officer', action: 'CREATE', entityType: 'PaymentBatch', entityId: 'batch1', oldValues: null, newValues: { name: 'BULAWAYO - Q1 2026' }, reason: null, ipAddress: '192.168.1.30', timestamp: '2026-05-30T09:00:00Z' },
-    { id: 'a6', userId: 'u3', userName: 'Peter Ndlovu', userRole: 'finance_officer', action: 'VALIDATE', entityType: 'PaymentBatch', entityId: 'batch1', oldValues: { status: 'pending' }, newValues: { status: 'validated' }, reason: null, ipAddress: '192.168.1.30', timestamp: '2026-05-30T10:00:00Z' },
-    { id: 'a7', userId: 'u3', userName: 'Peter Ndlovu', userRole: 'finance_officer', action: 'EXECUTE', entityType: 'PaymentBatch', entityId: 'batch1', oldValues: { status: 'validated' }, newValues: { status: 'completed' }, reason: null, ipAddress: '192.168.1.30', timestamp: '2026-05-30T11:00:00Z' },
-    { id: 'a8', userId: 'u4', userName: 'Sarah Ncube', userRole: 'national_admin', action: 'OVERRIDE', entityType: 'PaymentList', entityId: 'l2', oldValues: { status: 'certified' }, newValues: { status: 'draft' }, reason: 'Emergency correction requested by provincial officer', ipAddress: '192.168.1.40', timestamp: '2026-06-01T08:30:00Z' },
-    { id: 'a9', userId: 'u2', userName: 'Grace Sibanda', userRole: 'hr_custodian', action: 'ADD', entityType: 'Beneficiary', entityId: 'b100', oldValues: null, newValues: { fullName: 'Blessing Dube' }, reason: null, ipAddress: '192.168.1.10', timestamp: '2026-06-01T09:00:00Z' },
-    { id: 'a10', userId: 'u1', userName: 'Tendai Moyo', userRole: 'provincial_officer', action: 'VIEW', entityType: 'Beneficiary', entityId: 'b50', oldValues: null, newValues: null, reason: null, ipAddress: '192.168.1.20', timestamp: '2026-06-01T10:00:00Z' },
+    // Empty initially - will be populated by actual system actions
   ];
 
   const exceptions: ExceptionRequest[] = [
@@ -354,7 +365,8 @@ export function seedAllData(): void {
   setStorage(STORAGE_KEYS.BATCHES, batches);
   setStorage(STORAGE_KEYS.AUDIT_LOGS, auditLogs);
   setStorage(STORAGE_KEYS.EXCEPTIONS, exceptions);
-  setStorage(STORAGE_KEYS.VHW_MASTER_LIST, vhwMasterList);
+  // Avoid storing the full VHW master list in localStorage (can exceed quota).
+  // The app will fallback to the bundled JSON via `getVhwMasterList()` when storage is empty.
   localStorage.setItem(STORAGE_KEYS.SEEDED, 'true');
 }
 

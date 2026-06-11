@@ -1,4 +1,5 @@
 import type { User, Beneficiary, PaymentList, PaymentBatch } from '@/types';
+import { canonicalizeProvince } from '@/utils/province';
 
 /**
  * Filter data based on user's role and province/district
@@ -70,7 +71,8 @@ export function getUserProvinceLabel(user: User | null): string {
   if (!user) return 'Unknown';
   if (user.role === 'national_admin') return 'National';
   if (user.role === 'finance_officer' && !user.province) return 'National';
-  return user.province || 'Unassigned';
+  const cp = canonicalizeProvince(user.province);
+  return cp || (user.province || 'Unassigned');
 }
 
 /**

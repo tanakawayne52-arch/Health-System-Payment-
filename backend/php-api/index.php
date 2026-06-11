@@ -67,6 +67,9 @@ switch ($route) {
     case 'exports':
         require __DIR__ . '/exports.php';
         break;
+    case 'regions':
+        require __DIR__ . '/regions.php';
+        break;
     case 'vhw-master-list':
         require __DIR__ . '/vhw-master-list.php';
         break;

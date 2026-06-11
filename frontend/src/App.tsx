@@ -22,6 +22,7 @@ const PaymentCyclesPage = React.lazy(() => import('@/pages/PaymentCyclesPage'));
 const ReconciliationPage = React.lazy(() => import('@/pages/ReconciliationPage'));
 const VhwNationalDashboard = React.lazy(() => import('@/pages/VhwNationalDashboard'));
 const VhwProvincialDashboard = React.lazy(() => import('@/pages/VhwProvincialDashboard'));
+const VhwDistrictDashboard = React.lazy(() => import('@/pages/VhwDistrictDashboard'));
 const VhwMasterRecordsPage = React.lazy(() => import('@/pages/VhwMasterRecordsPage'));
 const WorkforceMasterSummaryPage = React.lazy(() => import('@/pages/WorkforceMasterSummaryPage'));
 const NotificationsPage = React.lazy(() => import('@/pages/NotificationsPage'));
@@ -77,7 +78,7 @@ function DashboardRouter() {
 function NotFoundRedirect() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <PageLoader />;
-  return <Navigate to={isAuthenticated ? '/' : '/login'} replace />;
+  return <Navigate to={isAuthenticated ? '/overview/' : '/login'} replace />;
 }
 
 
@@ -90,7 +91,8 @@ function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/" element={<ProtectedRoute allowedRoles={['provincial_officer', 'hr_custodian', 'finance_officer', 'national_admin']}><AppLayout><DashboardRouter /></AppLayout></ProtectedRoute>} />
+              <Route path="/" element={<Navigate to="/overview/" replace />} />
+              <Route path="/overview/" element={<ProtectedRoute allowedRoles={['provincial_officer', 'hr_custodian', 'finance_officer', 'national_admin']}><AppLayout><DashboardRouter /></AppLayout></ProtectedRoute>} />
 
               <Route path="/beneficiaries" element={<ProtectedRoute allowedRoles={['provincial_officer', 'hr_custodian', 'finance_officer', 'national_admin']}><AppLayout><BeneficiariesPage /></AppLayout></ProtectedRoute>} />
 
@@ -105,6 +107,7 @@ function App() {
               <Route path="/users" element={<ProtectedRoute allowedRoles={['national_admin']}><AppLayout><UsersPage /></AppLayout></ProtectedRoute>} />
               <Route path="/vhw-national-dashboard" element={<ProtectedRoute allowedRoles={['provincial_officer', 'hr_custodian', 'finance_officer', 'national_admin']} requireNationalLevel><AppLayout><VhwNationalDashboard /></AppLayout></ProtectedRoute>} />
               <Route path="/vhw-provincial-dashboard" element={<ProtectedRoute allowedRoles={['provincial_officer', 'hr_custodian', 'finance_officer', 'national_admin']}><AppLayout><VhwProvincialDashboard /></AppLayout></ProtectedRoute>} />
+              <Route path="/vhw-district-dashboard" element={<ProtectedRoute allowedRoles={['provincial_officer', 'hr_custodian', 'finance_officer', 'national_admin']} requireNationalLevel><AppLayout><VhwDistrictDashboard /></AppLayout></ProtectedRoute>} />
               <Route path="/vhw-master-records" element={<ProtectedRoute allowedRoles={['national_admin']}><AppLayout><VhwMasterRecordsPage /></AppLayout></ProtectedRoute>} />
               <Route path="/workforce-summary" element={<ProtectedRoute allowedRoles={['hr_custodian', 'national_admin']}><AppLayout><WorkforceMasterSummaryPage /></AppLayout></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute allowedRoles={['provincial_officer', 'hr_custodian', 'finance_officer', 'national_admin']}><AppLayout><NotificationsPage /></AppLayout></ProtectedRoute>} />

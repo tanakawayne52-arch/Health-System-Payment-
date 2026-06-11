@@ -1,6 +1,9 @@
 /// <reference types="vite/client" />
 import type { VhwRecord } from '@/types';
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000/api';
+
+// Optional runtime fallback (useful when PHP dev server is down).
+const API_BASE_URL_FALLBACK = import.meta.env.VITE_API_URL_FALLBACK || 'http://127.0.0.1:3000/api';
 
 export interface PaginationMeta {
   page: number;
@@ -54,7 +57,8 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    attemptFallback = true
   ): Promise<ApiResponse<T>> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -648,6 +652,19 @@ class ApiClient {
     if (params?.limit) queryParams.set('limit', String(params.limit));
     const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
     return this.request<VhwRecord[]>(`/vhw-master-list${query}`);
+  }
+
+  async getProvinces() {
+    return this.request<string[]>('/regions/provinces');
+  }
+
+  async getDistricts(province: string) {
+    const q = `?province=${encodeURIComponent(province)}`;
+    return this.request<string[]>(`/regions/districts${q}`);
+  }
+
+  async getRegionMapping() {
+    return this.request<Record<string, string[]>>('/regions');
   }
 
   async getAdminStats() {

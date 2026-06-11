@@ -6,17 +6,17 @@ import type { UserRole, NavItem } from '@/types';
 import {
   LayoutDashboard, FileText, Users, BarChart3, ClipboardList,
   Calendar, Wallet, GitCompare, UserCog, LogOut, ChevronLeft,
-  ChevronRight, Bell, Settings, Activity, ChevronDown,
+  ChevronRight, Activity, ChevronDown,
 } from 'lucide-react';
 import Breadcrumbs from './Breadcrumbs';
 
 const iconMap: Record<string, React.ElementType> = {
   LayoutDashboard, FileText, Users, BarChart3, ClipboardList,
-  Calendar, Wallet, GitCompare, UserCog, Settings, Activity,
+  Calendar, Wallet, GitCompare, UserCog, Activity,
 };
 
 const pageTitles: Record<string, string> = {
-  '/': 'Overview',
+  '/overview/': 'Overview',
   '/beneficiaries': 'VHW Records',
   '/payment-lists': 'Payment Lists',
   '/payment-lists/new': 'Create Payment List',
@@ -28,6 +28,7 @@ const pageTitles: Record<string, string> = {
   '/users': 'User Management',
   '/vhw-national-dashboard': 'National VHW Analytics',
   '/vhw-provincial-dashboard': 'Provincial VHW Analytics',
+  '/vhw-district-dashboard': 'District VHW Analytics',
   '/vhw-master-records': 'VHW Master Records',
   '/workforce-summary': 'Workforce Master Summary',
   '/notifications': 'Notifications & Tasks',
@@ -123,7 +124,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const initials = user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const isActive = (path: string) => {
-    if (path === '/') return location.pathname === '/';
+    if (path === '/overview/' || path === '/overview') return location.pathname === '/overview' || location.pathname === '/overview/' || location.pathname === '/';
     return location.pathname.startsWith(path);
   };
 
@@ -190,36 +191,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="w-10 h-10 rounded-xl bg-[#2dd4bf] flex items-center justify-center">
                 <span className="text-[#0f172a] font-bold text-xs">{initials}</span>
               </div>
-              <div className="flex flex-col items-center gap-2">
-                <button onClick={() => navigate('/notifications')} className="p-2 text-white hover:text-white transition-colors">
-                  <Bell className="w-5 h-5" />
-                </button>
-                <button onClick={() => navigate('/settings')} className="p-2 text-white hover:text-white transition-colors">
-                  <Settings className="w-5 h-5" />
-                </button>
-                <button onClick={logout} className="p-2 text-white hover:text-red-400 transition-colors">
-                  <LogOut className="w-5 h-5" />
-                </button>
-              </div>
+              <button onClick={logout} className="p-2 text-white hover:text-red-400 transition-colors">
+                <LogOut className="w-5 h-5" />
+              </button>
             </div>
           )}
         </div>
-
-        {/* Quick actions (expanded view) */}
-        {!collapsed && (
-          <div className="px-4 pb-4 border-t border-white/5">
-            <div className="flex items-center gap-2">
-              <button onClick={() => navigate('/notifications')} className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/7 rounded-md text-white">
-                <Bell className="w-4 h-4" />
-                <span className="text-xs font-medium">Notifications</span>
-              </button>
-              <button onClick={() => navigate('/settings')} className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/7 rounded-md text-white">
-                <Settings className="w-4 h-4" />
-                <span className="text-xs font-medium">Settings</span>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Collapse Toggle */}
         <button

@@ -381,9 +381,11 @@ export function useExceptions() {
   return [data, setData, isLoading, error, fetchData] as const;
 }
 
+import { vhwMasterList } from '@/data/vhw-masterlist';
+
 // VHW Master List with real-time sync
 export function useVhwMasterList() {
-  const [data, setData] = useState<VhwRecord[]>([]);
+  const [data, setData] = useState<VhwRecord[]>(vhwMasterList);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -395,10 +397,12 @@ export function useVhwMasterList() {
       if (result.success && Array.isArray(result.data)) {
         setData(result.data);
       } else {
-        setError('Failed to load VHW master list');
+        // Fallback to local data if API fails
+        setData(vhwMasterList);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch VHW master list');
+      // Fallback to local data if API fails
+      setData(vhwMasterList);
     } finally {
       setIsLoading(false);
     }

@@ -9,6 +9,7 @@
     "dev": "tsx index.ts",
     "build": "tsc && echo 'Backend compiled successfully to dist/'",
     "build:watch": "tsc --watch",
+    "import:vhw-master-list": "node ./scripts/import-vhw-master-list.js",
     "test": "echo 'Backend tests completed'",
     "lint": "eslint .",
     "clean": "rm -rf node_modules dist"

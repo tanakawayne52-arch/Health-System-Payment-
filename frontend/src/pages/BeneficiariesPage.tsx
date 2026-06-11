@@ -3,10 +3,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
 import Badge from '@/components/Badge';
-import { PROVINCES, DISTRICTS } from '@/types';
-import { Search, Download, Plus, Pencil, X, ChevronLeft, ChevronRight, Upload, Users as UsersIcon, Info, Calendar, MapPin, Phone, Copy } from 'lucide-react';
+import { Search, Download, Plus, Pencil, X, Upload, Users as UsersIcon, Info, Calendar, MapPin, Phone, Copy } from 'lucide-react';
 import type { Beneficiary, BeneficiaryStatus } from '@/types';
 import { generateId } from '@/lib/id';
+import PaginationControls from '@/components/PaginationControls';
 
 export default function BeneficiariesPage() {
   const { user } = useAuth();
@@ -26,6 +26,8 @@ export default function BeneficiariesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [provinces, setProvinces] = useState<string[]>([]);
+  const [regionMap, setRegionMap] = useState<Record<string, string[]>>({});
 
   const pageSize = 15;
 
@@ -63,10 +65,19 @@ export default function BeneficiariesPage() {
     loadData();
   }, [search, provinceFilter, districtFilter, statusFilter, page, user]);
 
+  useEffect(() => {
+    api.getRegionMapping().then(res => {
+      if (res.success && res.data) {
+        setRegionMap(res.data);
+        setProvinces(Object.keys(res.data).sort());
+      }
+    });
+  }, []);
+
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
   const paginated = beneficiaries;
 
-  const availableDistricts = provinceFilter !== 'ALL' ? (DISTRICTS[provinceFilter] || []) : [];
+  const availableDistricts = provinceFilter !== 'ALL' ? (regionMap[provinceFilter] || []) : [];
 
   const handleSave = async (formData: Partial<Beneficiary>) => {
     try {
@@ -225,7 +236,7 @@ export default function BeneficiariesPage() {
               className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:border-teal-400 focus:outline-none focus:ring-4 focus:ring-teal-500/10 transition-all cursor-pointer"
             >
               <option value="ALL">All Provinces</option>
-              {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+              {provinces.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           )}
 
@@ -343,45 +354,16 @@ export default function BeneficiariesPage() {
         </div>
 
         {/* Pagination Footer */}
-        <div className="px-6 py-5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
-          <p className="text-xs text-slate-500 font-semibold">
-            Showing <span className="text-slate-900">{((page - 1) * pageSize) + 1}</span> to <span className="text-slate-900">{Math.min(page * pageSize, totalRecords)}</span> of <span className="text-slate-900">{totalRecords}</span> records
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-              className="p-2 text-slate-400 hover:text-slate-900 disabled:opacity-30 transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-1">
-              {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                const p = i + 1;
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
-                      page === p 
-                        ? 'bg-[#2dd4bf] text-[#0f172a] shadow-md shadow-teal-500/20' 
-                        : 'text-slate-500 hover:bg-slate-200'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              disabled={page === totalPages}
-              onClick={() => setPage(page + 1)}
-              className="p-2 text-slate-400 hover:text-slate-900 disabled:opacity-30 transition-colors"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+        <PaginationControls
+          pagination={{
+            page,
+            total: totalRecords,
+            totalPages,
+            limit: pageSize
+          }}
+          onPageChange={setPage}
+          className="mt-4"
+        />
       </div>
 
       {/* Add/Edit Drawer */}
@@ -415,6 +397,7 @@ export default function BeneficiariesPage() {
             )}
             <BeneficiaryForm
               initial={editingBen}
+              regions={regionMap}
               onSave={handleSave}
               onCancel={() => { setShowDrawer(false); setEditingBen(null); }}
             />
@@ -524,7 +507,7 @@ export default function BeneficiariesPage() {
   );
 }
 
-function BeneficiaryForm({ initial, onSave, onCancel }: { initial: Beneficiary | null; onSave: (d: Partial<Beneficiary>) => void; onCancel: () => void }) {
+function BeneficiaryForm({ initial, regions, onSave, onCancel }: { initial: Beneficiary | null; regions: Record<string, string[]>; onSave: (d: Partial<Beneficiary>) => void; onCancel: () => void }) {
   const [form, setForm] = useState({
     fullName: initial?.fullName || '',
     nationalId: initial?.nationalId || '',
@@ -538,7 +521,8 @@ function BeneficiaryForm({ initial, onSave, onCancel }: { initial: Beneficiary |
     dateJoined: initial?.dateJoined || new Date().toISOString().split('T')[0],
   });
 
-  const districts = DISTRICTS[form.province] || [];
+  const provinces = Object.keys(regions).sort();
+  const districts = regions[form.province] || [];
 
   const isValid = form.fullName && form.nationalId && form.ecocashNumber && form.province && form.district;
 
@@ -560,7 +544,7 @@ function BeneficiaryForm({ initial, onSave, onCancel }: { initial: Beneficiary |
         <div>
           <label className="block text-xs font-medium text-[#475569] mb-1.5 uppercase tracking-wide">Province *</label>
           <select value={form.province} onChange={e => setForm(f => ({ ...f, province: e.target.value, district: '' }))} className="w-full bg-[#f1f5f9] border border-[#e2e8f0] rounded-md px-3 py-2 text-sm focus:border-[#0d9488] focus:outline-none">
-            {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+            {Object.keys(regions).map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         </div>
         <div>
